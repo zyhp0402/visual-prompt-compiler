@@ -5,7 +5,7 @@
 ## 当前里程碑
 
 - 当前：M5 评测、回归与发布门槛
-- 状态：M5 实现与本地全量验收完成
+- 状态：M5 实现、本地独立验收、远端 CI 均完成
 - 远端：https://github.com/zyhp0402/visual-prompt-compiler
 - 边界：只实现 M5 评测，不生成图片，不执行真实 OpenAI 调用，不开始 M6
 - 下一步：等待用户验收；后续里程碑必须由用户明确要求
@@ -26,6 +26,7 @@
 
 ## M5 验收结果
 
+- 远端提交 [`bb232c0`](https://github.com/zyhp0402/visual-prompt-compiler/commit/bb232c0)；GitHub Actions 绿色运行 [`30259047706`](https://github.com/zyhp0402/visual-prompt-compiler/actions/runs/30259047706)
 - `packages/evals`：22 个测试通过，strict typecheck 与 build 通过；openai-adapter 16 个、compiler-core 21 个窄测通过
 - 固定 mock：10 个 case、20 个 arm record，success/schema 均 20/20；baseline 固定文字 14/14、禁止项 0/28，compiler 固定文字 42/42、禁止项 0/84；两臂共同规则各检出 1 个冲突，compiler 三方向差异 10/10
 - `pnpm eval:versions`：`prompt-1` / `1.0.0` / `eval-1` 与三套 SHA-256 审批记录一致
