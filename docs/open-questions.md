@@ -14,9 +14,9 @@
 - 方向用 `mode` 定位，不再保留冗余且难以跨项校验唯一性的方向 ID；
 - M1 新增独立 ReviseResponse，最小 changes 为 `{path,before,after}[]`，不实现通用 JSON Patch 执行器。
 
-## M2 前必须决定
+## M2 已定案
 
-1. 首版实际支持哪些 `taskSpecific` 判别结构？推荐：只先类型化 `poster`、`image_edit`、`storyboard` 三类确有专属需求的字段，其余使用公共字段；不要一次设计九套空泛结构。
+- 首版只为 `poster`、`image_edit`、`storyboard` 生成最小 `taskSpecific` 结构；其余任务使用公共字段，且不修改 v1 外部 Schema。见 ADR 0003。
 
 ## M3 前必须决定
 

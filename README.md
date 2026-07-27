@@ -1,6 +1,6 @@
 # Visual Prompt Compiler
 
-Chrome Manifest V3 Side Panel + Fastify 的 pnpm monorepo。当前只完成 M1：契约、health endpoint 和可加载的空侧边栏；尚未实现编译器，也不会调用 OpenAI。
+Chrome Manifest V3 Side Panel + Fastify 的 pnpm monorepo。当前完成 M2：除 M1 的契约、health endpoint 和可加载空侧边栏外，包含可独立测试的纯 `compiler-core`、确定性 fake planner、renderer、lint 与最多一次 repair；尚未接入 OpenAI。
 
 ## 前置条件
 
@@ -93,4 +93,4 @@ Chrome/Chromium 中加载 `apps/extension/dist`。
 
 ## 环境变量
 
-复制 `.env.example` 后仅在服务端环境填写。M1 不需要任何 OpenAI 凭据，且扩展 bundle 不应包含 `OPENAI_API_KEY`。
+复制 `.env.example` 后仅在服务端环境填写。M2 不需要任何 OpenAI 凭据，且扩展 bundle 不应包含 `OPENAI_API_KEY`。
