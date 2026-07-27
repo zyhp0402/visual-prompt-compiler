@@ -5,12 +5,12 @@
 ## 当前里程碑
 
 - 当前：M3 OpenAI 服务端集成
-- 状态：M3 实现与本地独立验收完成，远端 CI 待验证
+- 状态：M3 实现、本地独立验收与远端 CI 全部完成
 - 远端：https://github.com/zyhp0402/visual-prompt-compiler
 - 边界：只实现 M3 服务端集成，不修改扩展 UI，不生成图片，不执行真实 OpenAI 调用
 - 下一步：仅在用户明确要求后开始 M4
 
-## M3 已完成（本地）
+## M3 已完成
 
 - `openai-adapter` 使用官方 SDK `responses.parse`、`zodTextFormat` 与 `output_parsed`
 - strict-compatible 最小模型输出 Schema，组装后复验领域 `VisualSpec`、`CompileResponse` 和 `ReviseResponse`
@@ -23,7 +23,7 @@
 - mock 集成测试与默认禁用的手动 smoke 脚本
 - ADR 0004：模型输出 Schema 与服务端配置边界
 
-## M3 本地验收
+## M3 验收结果
 
 - Node 24.14.0、pnpm 11.9.0
 - contracts：13 个契约与 parity 测试通过
@@ -35,6 +35,8 @@
   - Vitest：65 个测试通过
   - 五个 workspace 构建：通过
   - Playwright Chromium E2E：1 个通过
+- GitHub Actions run `30245314997` 绿色
+  - https://github.com/zyhp0402/visual-prompt-compiler/actions/runs/30245314997
 - 未设置 `OPENAI_API_KEY`，未执行真实 OpenAI smoke
 
 ## M2 已完成
@@ -134,3 +136,4 @@
 - `pnpm -r list --depth -1`
 - `gh run watch 30233559713 --repo zyhp0402/visual-prompt-compiler --exit-status`
 - `gh run watch 30237240786 --repo zyhp0402/visual-prompt-compiler --exit-status`
+- `gh run watch 30245314997 --repo zyhp0402/visual-prompt-compiler --exit-status`
