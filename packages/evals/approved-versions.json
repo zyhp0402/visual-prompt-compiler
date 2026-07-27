@@ -1,0 +1,8 @@
+{
+  "promptVersion": "prompt-1",
+  "schemaVersion": "1.0.0",
+  "evaluationVersion": "eval-1",
+  "promptFingerprint": "sha256:6703b931acb3cf8d1501cd494fdc9360c7cb1e57db9ebfa3475c173757c50b94",
+  "schemaFingerprint": "sha256:39ba0aaf2107a185b09325f97c0d6b4f374d3cd15c1f06a0dfc1e642089da94c",
+  "evaluationFingerprint": "sha256:ef1b096b717036e23a3c7e20a74d6d827dc27a49387e6bfd134866cb936ac5c3"
+}

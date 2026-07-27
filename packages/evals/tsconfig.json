@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "outDir": "dist",
+    "types": ["node"],
+    "paths": {
+      "@vpc/contracts": ["../contracts/src/index.ts"],
+      "@vpc/compiler-core": ["../compiler-core/src/index.ts"],
+      "@vpc/openai-adapter": ["../openai-adapter/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts"]
+}

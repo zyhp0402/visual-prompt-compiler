@@ -13,10 +13,14 @@
     "build": "pnpm -r --if-present build",
     "test": "pnpm -r --if-present test",
     "test:e2e": "playwright test",
+    "eval:mock": "pnpm build && node packages/evals/dist/cli.js --mode mock",
+    "eval:real": "node scripts/eval-real-preflight.mjs && pnpm build && node packages/evals/dist/cli.js --mode real",
+    "eval:versions": "pnpm --filter @vpc/contracts build && pnpm --filter @vpc/compiler-core build && pnpm --filter @vpc/evals build && node packages/evals/dist/version-cli.js check",
+    "eval:approve": "pnpm --filter @vpc/contracts build && pnpm --filter @vpc/compiler-core build && pnpm --filter @vpc/evals build && node packages/evals/dist/version-cli.js approve",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r --if-present typecheck",
     "format:check": "prettier --check .",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm test:e2e"
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && node packages/evals/dist/version-cli.js check && pnpm test:e2e"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

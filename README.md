@@ -1,6 +1,6 @@
 # Visual Prompt Compiler
 
-Chrome Manifest V3 Side Panel + Fastify 的 pnpm monorepo。当前完成 M4：中文侧边栏通过服务端 compile/revise API 生成三份方向，并在 `chrome.storage.local` 保存历史与收藏。
+Chrome Manifest V3 Side Panel + Fastify 的 pnpm monorepo。当前完成 M5：除中文侧边栏和 compile/revise 主流程外，提供可复现的离线双臂评测与显式 real 评测入口。
 
 ## 前置条件
 
@@ -105,6 +105,10 @@ Chrome/Chromium 中加载 `apps/extension/dist`，再把
 - `pnpm typecheck`：运行 TypeScript strict 检查；
 - `pnpm format:check`：检查格式；
 - `pnpm test:e2e`：真实加载构建后的 unpacked extension；
+- `pnpm eval:mock`：运行离线双臂基准并写本地产物；
+- `pnpm eval:real`：显式运行真实双臂基准；
+- `pnpm eval:versions`：检查 prompt/schema 版本审批记录；
+- `pnpm eval:approve`：显式更新版本审批记录；
 - `pnpm check`：依次执行全部检查、构建和 E2E。
 
 ## 环境变量
@@ -119,3 +123,32 @@ node scripts/smoke-openai.mjs
 ```
 
 CI 只运行 mock，不执行该脚本。
+
+## 评测
+
+默认 mock 使用 10 条基准用例，不调用 OpenAI：
+
+```powershell
+pnpm eval:mock -- --run-id local-mock --now 2026-07-27T00:00:00.000Z
+```
+
+产物写入 `artifacts/evals/<run-id>.json` 和 `.md`，但不会进入 Git。报告只包含 case ID、计数和指标，不保存简报、固定文字或提示词。baseline 只评估直接扩写得到的完整/精简两段 prompt；compiler 评估三个方向的六段 prompt，因此约束指标始终同时显示各自的 numerator/denominator。指标验证契约行为，不代表视觉质量或审美提升。
+
+真实双臂评测必须显式执行并提供服务端凭据：
+
+```powershell
+$env:OPENAI_API_KEY='<server-only-key>'
+$env:OPENAI_TEXT_MODEL='<approved-structured-output-model>'
+pnpm eval:real -- --run-id manual-real
+```
+
+缺少任一变量时，根命令会在 build、读取输入、调用模型和写产物之前返回 `EVAL_REAL_CREDENTIALS_MISSING`。若任一 arm 失败，命令先写出可定位报告，再以 `EVAL_RUN_FAILED` 非零退出。版本审批命令：
+
+```powershell
+pnpm eval:versions
+pnpm eval:approve
+```
+
+普通 `pnpm check` 只检查已审批版本并运行 mock 单测，不生成评测产物，也不调用真实 OpenAI。
+
+审批文件分别记录 prompt、Schema 与 evaluation 三套版本和 SHA-256 指纹。对应行为指纹变化时必须先提升对应版本，`pnpm eval:approve` 才允许更新批准记录。

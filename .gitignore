@@ -5,3 +5,6 @@ playwright-report/
 test-results/
 .env
 *.log
+artifacts/evals/*.json
+artifacts/evals/*.md
+!artifacts/evals/README.md

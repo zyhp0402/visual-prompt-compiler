@@ -5,6 +5,7 @@ import {
 } from '@vpc/compiler-core';
 
 import {
+  ModelBaselineSchema,
   ModelDirectionsSchema,
   ModelRevisionSchema,
   OpenAIAdapterError,
@@ -55,6 +56,43 @@ const client = (result: unknown): ResponsesClient => ({
 });
 
 describe('OpenAI adapter', () => {
+  it('expands the raw normalized input through the baseline path', async () => {
+    let captured: unknown;
+    const planner = new OpenAIPlanner(
+      {
+        responses: {
+          parse: async (input) => {
+            captured = input;
+            return {
+              output_parsed: {
+                fullPrompt: 'full direct expansion',
+                compactPrompt: 'compact direct expansion',
+              },
+            };
+          },
+        },
+      },
+      'configured-model',
+    );
+    const result = await planner.expand(
+      normalizeInput({
+        brief: 'raw brief',
+        taskType: 'poster',
+        aspectRatio: 'auto',
+        mandatoryText: [],
+        mandatoryElements: [],
+        forbiddenElements: [],
+        creativity: 50,
+        allowAssumptions: true,
+        outputLanguage: 'zh-CN',
+      }),
+    );
+
+    expect(ModelBaselineSchema.safeParse(result).success).toBe(true);
+    expect(JSON.stringify(captured)).toContain('raw brief');
+    expect(JSON.stringify(captured)).toContain('directly');
+  });
+
   it('parses structured directions and records usage', async () => {
     const planner = new OpenAIPlanner(
       client({

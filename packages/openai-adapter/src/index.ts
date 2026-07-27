@@ -67,6 +67,25 @@ export const ModelDirectionsSchema = z
   .object({ directions: z.array(modelDirectionSchema).length(3) })
   .strict();
 
+export const ModelBaselineSchema = z
+  .object({
+    fullPrompt: z.string().min(1),
+    compactPrompt: z.string().min(1),
+  })
+  .strict();
+
+export type BaselineExpansion = z.infer<typeof ModelBaselineSchema>;
+
+export interface BaselineExpander {
+  readonly model: string;
+  usage(): {
+    latencyMs: number;
+    inputTokens?: number;
+    outputTokens?: number;
+  };
+  expand(input: NormalizedInput): Promise<BaselineExpansion>;
+}
+
 export const ModelRevisionSchema = z
   .object({
     goal: z.string().min(1),
@@ -344,6 +363,15 @@ export class OpenAIPlanner implements Planner {
     });
   }
 
+  async expand(input: NormalizedInput): Promise<BaselineExpansion> {
+    return this.parse(
+      ModelBaselineSchema,
+      'direct_prompt_expansion',
+      'Expand the user input directly into one full and one compact image prompt. Preserve hard constraints exactly. Do not create a visual specification or multiple creative directions.',
+      input,
+    );
+  }
+
   async planDirections(
     spec: VisualSpec,
     context?: PlanningContext,
@@ -483,3 +511,10 @@ export const createOpenAIPlanner = (config: {
     config.model,
     { timeoutMs: config.timeoutMs, ...(config.now ? { now: config.now } : {}) },
   );
+
+export const createOpenAIBaselineExpander = (config: {
+  apiKey: string;
+  model: string;
+  timeoutMs: number;
+  now?: () => number;
+}): BaselineExpander => createOpenAIPlanner(config);

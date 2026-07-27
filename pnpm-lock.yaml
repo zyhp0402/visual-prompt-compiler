@@ -105,6 +105,18 @@ importers:
         specifier: 8.20.0
         version: 8.20.0
 
+  packages/evals:
+    dependencies:
+      '@vpc/compiler-core':
+        specifier: workspace:*
+        version: link:../compiler-core
+      '@vpc/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@vpc/openai-adapter':
+        specifier: workspace:*
+        version: link:../openai-adapter
+
   packages/openai-adapter:
     dependencies:
       '@vpc/compiler-core':

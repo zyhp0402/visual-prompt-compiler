@@ -4,11 +4,36 @@
 
 ## 当前里程碑
 
-- 当前：M4 Chrome Side Panel 主流程
-- 状态：M4 实现、本地独立验收与远端 CI 全部完成
+- 当前：M5 评测、回归与发布门槛
+- 状态：M5 实现与本地全量验收完成
 - 远端：https://github.com/zyhp0402/visual-prompt-compiler
-- 边界：只实现 M4 扩展主流程，不生成图片，不执行真实 OpenAI 调用，不开始 M5 评测系统
-- 下一步：仅在用户明确要求后开始 M5
+- 边界：只实现 M5 评测，不生成图片，不执行真实 OpenAI 调用，不开始 M6
+- 下一步：等待用户验收；后续里程碑必须由用户明确要求
+
+## M5 已完成
+
+- 新增 strict TypeScript `packages/evals`，复用 contracts、compiler-core 与 openai-adapter
+- JSONL 解析将 category 映射为 CompileRequest taskType，空输入、非法 case 和重复 ID 使用稳定边界错误码
+- baseline 使用独立两段 prompt 结果与独立 Schema/指标入口，不调用 fake planner 或构造编译器响应；mock compiler 使用现有 compileBrief 与 deterministic fake planner
+- real 仅在显式模式启用；根命令缺少 key/model 时在 build、读输入、调用和写产物前失败
+- 每 case/arm 输出 success coverage、各自 Schema、固定文字、禁止元素正向泄漏、共同冲突规则、方向差异和长度指标
+- 所有比例带 numerator/denominator/rate；失败仍进入约束分母；所有长度带 count/total/min/max/average
+- JSON/Markdown 报告只保存 ID、元数据和指标，不保存简报、固定文字或提示词
+- arm 失败先写可定位报告，再以 `EVAL_RUN_FAILED` 非零退出
+- 固定 run-id 与 now 的 mock 报告可复现；run 产物忽略，只跟踪目录说明
+- tracked prompt/schema/evaluation 三套版本和行为指纹审批文件与 check/approve 命令
+- ADR 0006：评测边界与版本审批
+
+## M5 验收结果
+
+- `packages/evals`：22 个测试通过，strict typecheck 与 build 通过；openai-adapter 16 个、compiler-core 21 个窄测通过
+- 固定 mock：10 个 case、20 个 arm record，success/schema 均 20/20；baseline 固定文字 14/14、禁止项 0/28，compiler 固定文字 42/42、禁止项 0/84；两臂共同规则各检出 1 个冲突，compiler 三方向差异 10/10
+- `pnpm eval:versions`：`prompt-1` / `1.0.0` / `eval-1` 与三套 SHA-256 审批记录一致
+- real 根命令缺凭据检查：在 build、读取不存在的输入和写产物前返回 `EVAL_REAL_CREDENTIALS_MISSING`
+- `pnpm eval:mock` 根命令：生成 JSON 与 Markdown，产物被 Git 忽略
+- `pnpm check`：Prettier、ESLint、strict typecheck、106 个 Vitest、全部 workspace build、三套版本门禁和 2 个 Playwright E2E 全部通过
+- 首次全量检查的第二条既有 E2E 曾在 30 秒超时；单独重跑和随后完整重跑均通过，未修改 M4 代码
+- 未调用真实 OpenAI API
 
 ## M4 已完成
 
@@ -150,7 +175,7 @@
 - 已创建纯 `compiler-core`，包含 deterministic fake planner、renderer、lint 与最多一次 repair
 - 已实现 `openai-adapter` 和 compile/revise 服务端路由
 - 已实现 M4 Side Panel 主流程、版本化本地历史与收藏
-- 未创建 `evals`，未实现 M5 评测或图片生成
+- 已创建 `evals` 并完成 M5 离线评测；未实现图片生成或 M6
 - 未增加登录、支付、数据库、社区、模型训练或 GitHub 自动抓取
 - 未把 API Key 放入扩展
 

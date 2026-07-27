@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export const SCHEMA_VERSION = '1.0.0';
+
 export const TaskTypeSchema = z.enum([
   'poster',
   'photography',
