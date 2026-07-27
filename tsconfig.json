@@ -3,7 +3,10 @@
   "compilerOptions": {
     "noEmit": true,
     "lib": ["ES2023", "DOM"],
-    "types": ["node", "@playwright/test"]
+    "types": ["node", "@playwright/test"],
+    "paths": {
+      "@vpc/contracts": ["./packages/contracts/src/index.ts"]
+    }
   },
   "include": ["e2e/**/*.ts", "playwright.config.ts"]
 }

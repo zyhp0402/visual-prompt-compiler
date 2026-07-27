@@ -20,6 +20,8 @@ import {
   validCompileRequest,
 } from '../apps/extension/tests/fixtures.js';
 
+type FixtureDirection = (typeof validCompileResponse.directions)[number];
+
 const requests: Array<{ path: string; body: Record<string, unknown> }> = [];
 
 const readBody = async (
@@ -128,10 +130,11 @@ const server = createServer(async (request, response) => {
       result: {
         ...validCompileResponse,
         requestId: '123e4567-e89b-12d3-a456-426614174001',
-        directions: validCompileResponse.directions.map((direction) =>
-          direction.mode === body.targetMode
-            ? { ...direction, name: `${direction.name}（已修改）` }
-            : direction,
+        directions: validCompileResponse.directions.map(
+          (direction: FixtureDirection) =>
+            direction.mode === body.targetMode
+              ? { ...direction, name: `${direction.name}（已修改）` }
+              : direction,
         ),
       },
       changes: [
