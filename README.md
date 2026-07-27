@@ -1,6 +1,6 @@
 # Visual Prompt Compiler
 
-Chrome Manifest V3 Side Panel + Fastify 的 pnpm monorepo。当前完成 M2：除 M1 的契约、health endpoint 和可加载空侧边栏外，包含可独立测试的纯 `compiler-core`、确定性 fake planner、renderer、lint 与最多一次 repair；尚未接入 OpenAI。
+Chrome Manifest V3 Side Panel + Fastify 的 pnpm monorepo。当前完成 M3：服务端通过 Responses API structured outputs 驱动纯 `compiler-core`，扩展仍是 M1 空侧边栏。
 
 ## 前置条件
 
@@ -93,4 +93,13 @@ Chrome/Chromium 中加载 `apps/extension/dist`。
 
 ## 环境变量
 
-复制 `.env.example` 后仅在服务端环境填写。M2 不需要任何 OpenAI 凭据，且扩展 bundle 不应包含 `OPENAI_API_KEY`。
+复制 `.env.example` 后仅在服务端环境填写 `OPENAI_API_KEY`、`OPENAI_TEXT_MODEL` 和允许的扩展来源。密钥不得进入扩展 bundle。
+
+真实 OpenAI smoke test 默认禁用。先启动 API，再显式执行：
+
+```powershell
+$env:RUN_OPENAI_SMOKE='1'
+node scripts/smoke-openai.mjs
+```
+
+CI 只运行 mock，不执行该脚本。

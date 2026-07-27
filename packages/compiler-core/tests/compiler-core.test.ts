@@ -260,6 +260,20 @@ describe('compiler core', () => {
     expect(result.usage.model).toBe('test-planner');
   });
 
+  it('rejects an assembled response that violates the public contract', async () => {
+    const planner: Planner = {
+      ...createDeterministicFakePlanner(),
+      usage: () => ({ latencyMs: -1 }),
+    };
+
+    await expect(
+      compileBrief(toRequest(fixtures[0]!), { planner, requestId }),
+    ).rejects.toMatchObject({
+      name: 'InvalidCompilationError',
+      code: 'INVALID_COMPILATION_SHAPE',
+    } satisfies Partial<InvalidCompilationError>);
+  });
+
   it('attempts planner repair no more than once', async () => {
     const base = createDeterministicFakePlanner();
     let repairs = 0;
@@ -339,6 +353,7 @@ describe('compiler core', () => {
     const revised = await reviseCompilation(
       {
         previousSpec: initial.normalizedBrief,
+        previousDirections: initial.directions,
         instruction: '改为更克制的构图',
         targetMode: 'creative',
         preserveOtherDirections: true,
@@ -369,6 +384,7 @@ describe('compiler core', () => {
     const revised = await reviseCompilation(
       {
         previousSpec: initial.normalizedBrief,
+        previousDirections: initial.directions,
         instruction: '整体改为更克制的构图',
         targetMode: 'creative',
         preserveOtherDirections: false,
@@ -382,5 +398,68 @@ describe('compiler core', () => {
     expect(revised.changes).toContainEqual(
       expect.objectContaining({ path: 'goal' }),
     );
+  });
+
+  it('passes previous directions into targeted planning and preserves untargeted directions byte-for-byte', async () => {
+    const initial = await compileBrief(toRequest(fixtures[0]!), {
+      planner: createDeterministicFakePlanner(),
+      requestId,
+    });
+    const base = createDeterministicFakePlanner();
+    let receivedContext: Parameters<Planner['planDirections']>[1];
+    const planner: Planner = {
+      ...base,
+      planDirections: async (_spec, context) => {
+        receivedContext = context;
+        const planned = await base.planDirections(_spec, context);
+        return planned.filter(
+          ({ mode }) => mode === context?.revision?.targetMode,
+        );
+      },
+    };
+
+    const revised = await reviseCompilation(
+      {
+        previousSpec: initial.normalizedBrief,
+        previousDirections: initial.directions,
+        instruction: '只更新创意方向',
+        targetMode: 'creative',
+        preserveOtherDirections: true,
+      },
+      { planner, requestId },
+    );
+
+    expect(receivedContext?.previousDirections).toEqual(initial.directions);
+    expect(revised.result.directions[0]).toEqual(initial.directions[0]);
+    expect(revised.result.directions[2]).toEqual(initial.directions[2]);
+    expect(revised.result.directions[1]).not.toEqual(initial.directions[1]);
+  });
+
+  it('does not rewrite planner errors raised by the revise pipeline', async () => {
+    const initial = await compileBrief(toRequest(fixtures[0]!), {
+      planner: createDeterministicFakePlanner(),
+      requestId,
+    });
+    const base = createDeterministicFakePlanner();
+    const upstreamError = new Error('upstream');
+    const planner: Planner = {
+      ...base,
+      planDirections: async () => {
+        throw upstreamError;
+      },
+    };
+
+    await expect(
+      reviseCompilation(
+        {
+          previousSpec: initial.normalizedBrief,
+          previousDirections: initial.directions,
+          instruction: '修改',
+          targetMode: null,
+          preserveOtherDirections: false,
+        },
+        { planner, requestId },
+      ),
+    ).rejects.toBe(upstreamError);
   });
 });

@@ -1,9 +1,11 @@
-import type {
-  CompileRequest,
-  CompileResponse,
-  ReviseRequest,
-  ReviseResponse,
-  VisualSpec,
+import {
+  CompileResponseSchema,
+  ReviseResponseSchema,
+  type CompileRequest,
+  type CompileResponse,
+  type ReviseRequest,
+  type ReviseResponse,
+  type VisualSpec,
 } from '@vpc/contracts';
 
 export const PROMPT_VERSION = 'prompt-1';
@@ -35,6 +37,7 @@ export type RepairResult = {
 };
 
 export type PlanningContext = {
+  previousDirections: CompileResponse['directions'];
   revision?: {
     instruction: string;
     targetMode: ReviseRequest['targetMode'];
@@ -44,6 +47,12 @@ export type PlanningContext = {
 
 export interface Planner {
   readonly model: string;
+  usage?(): {
+    latencyMs: number;
+    inputTokens?: number;
+    outputTokens?: number;
+    repairAttempts?: number;
+  };
   buildVisualSpec(input: NormalizedInput): Promise<VisualSpec>;
   planDirections(
     spec: VisualSpec,
@@ -354,7 +363,7 @@ const aspectRatioSpec = (value: string): VisualSpec['aspectRatio'] =>
         value,
       };
 
-const taskSpecificFor = (
+export const buildTaskSpecific = (
   taskType: VisualSpec['taskType'],
   mandatoryElements: string[],
 ): Record<string, unknown> | undefined => {
@@ -386,7 +395,7 @@ export const createDeterministicFakePlanner = (): Planner => ({
 
   async buildVisualSpec(input) {
     const taskType = input.taskType === 'auto' ? 'general' : input.taskType;
-    const taskSpecific = taskSpecificFor(taskType, input.mandatoryElements);
+    const taskSpecific = buildTaskSpecific(taskType, input.mandatoryElements);
     return {
       schemaVersion: '1.0.0',
       taskType,
@@ -537,9 +546,21 @@ const assembleResponse = (
   spec: VisualSpec,
   plans: DirectionPlan[],
   dependencies: CompilerDependencies,
+  preservedDirections: Map<
+    DirectionPlan['mode'],
+    CompileResponse['directions'][number]
+  > = new Map(),
 ): CompileResponse => {
   const needsInput = spec.unresolvedQuestions.some(({ blocking }) => blocking);
-  const rendered = plans.map((plan) => renderPrompt(spec, plan));
+  const rendered = plans.map((plan) => {
+    const preserved = preservedDirections.get(plan.mode);
+    return preserved
+      ? {
+          fullPrompt: preserved.fullPrompt,
+          compactPrompt: preserved.compactPrompt,
+        }
+      : renderPrompt(spec, plan);
+  });
   const issues = needsInput
     ? []
     : lintCompilation(
@@ -548,29 +569,90 @@ const assembleResponse = (
         rendered.map(({ fullPrompt }) => fullPrompt),
       );
   const risks = [...new Set([...spec.riskFlags, ...issueCodes(issues)])];
-  return {
-    requestId: dependencies.requestId(),
-    schemaVersion: '1.0.0',
-    promptVersion: PROMPT_VERSION,
-    normalizedBrief: { ...spec, riskFlags: risks },
-    needsInput,
-    riskFlags: risks,
-    directions: needsInput
-      ? []
-      : plans.map((plan, index) => ({
-          mode: plan.mode,
-          name: plan.name,
-          concept: plan.concept,
-          differenceAxes: plan.differenceAxes,
-          fullPrompt: rendered[index]?.fullPrompt ?? '',
-          compactPrompt: rendered[index]?.compactPrompt ?? '',
-          negativeConstraints: spec.forbiddenElements,
-          assumptions: spec.assumptions.map(({ statement }) => statement),
-          riskFlags: risks,
-          scores: plan.scores,
-        })),
-    usage: { model: dependencies.planner.model, latencyMs: 0 },
-  };
+  const usage = dependencies.planner.usage?.();
+  try {
+    return CompileResponseSchema.parse({
+      requestId: dependencies.requestId(),
+      schemaVersion: '1.0.0',
+      promptVersion: PROMPT_VERSION,
+      normalizedBrief: { ...spec, riskFlags: risks },
+      needsInput,
+      riskFlags: risks,
+      directions: needsInput
+        ? []
+        : plans.map((plan, index) => {
+            const preserved = preservedDirections.get(plan.mode);
+            return (
+              preserved ?? {
+                mode: plan.mode,
+                name: plan.name,
+                concept: plan.concept,
+                differenceAxes: plan.differenceAxes,
+                fullPrompt: rendered[index]?.fullPrompt ?? '',
+                compactPrompt: rendered[index]?.compactPrompt ?? '',
+                negativeConstraints: spec.forbiddenElements,
+                assumptions: spec.assumptions.map(({ statement }) => statement),
+                riskFlags: risks,
+                scores: plan.scores,
+              }
+            );
+          }),
+      usage: {
+        model: dependencies.planner.model,
+        latencyMs: usage?.latencyMs ?? 0,
+        ...(usage?.inputTokens === undefined
+          ? {}
+          : { inputTokens: usage.inputTokens }),
+        ...(usage?.outputTokens === undefined
+          ? {}
+          : { outputTokens: usage.outputTokens }),
+      },
+    });
+  } catch {
+    throw new InvalidCompilationError();
+  }
+};
+
+const planFromDirection = (
+  direction: CompileResponse['directions'][number],
+): DirectionPlan => ({
+  mode: direction.mode,
+  name: direction.name,
+  concept: direction.concept,
+  differenceAxes: direction.differenceAxes,
+  instructions: [],
+  scores: direction.scores,
+});
+
+const mergeTargetedRevision = (
+  plans: DirectionPlan[],
+  context?: PlanningContext,
+): {
+  plans: DirectionPlan[];
+  preserved: Map<DirectionPlan['mode'], CompileResponse['directions'][number]>;
+} => {
+  const revision = context?.revision;
+  if (
+    !revision ||
+    revision.targetMode === null ||
+    !revision.preserveOtherDirections
+  ) {
+    return { plans, preserved: new Map() };
+  }
+
+  const replacement = plans.find(({ mode }) => mode === revision.targetMode);
+  if (!replacement) throw new InvalidCompilationError();
+
+  const preserved = new Map<
+    DirectionPlan['mode'],
+    CompileResponse['directions'][number]
+  >();
+  const merged = context.previousDirections.map((direction) => {
+    if (direction.mode === revision.targetMode) return replacement;
+    preserved.set(direction.mode, direction);
+    return planFromDirection(direction);
+  });
+  return { plans: merged, preserved };
 };
 
 const runPipeline = async (
@@ -582,12 +664,18 @@ const runPipeline = async (
   if (currentSpec.unresolvedQuestions.some(({ blocking }) => blocking)) {
     return assembleResponse(currentSpec, [], dependencies);
   }
-  let directions = await dependencies.planner.planDirections(
+  const initiallyPlanned = await dependencies.planner.planDirections(
     currentSpec,
     context,
   );
+  let { plans: directions, preserved } = mergeTargetedRevision(
+    initiallyPlanned,
+    context,
+  );
   const rendered = directions.map(
-    (direction) => renderPrompt(currentSpec, direction).fullPrompt,
+    (direction) =>
+      preserved.get(direction.mode)?.fullPrompt ??
+      renderPrompt(currentSpec, direction).fullPrompt,
   );
   const issues = lintCompilation(currentSpec, directions, rendered);
 
@@ -598,14 +686,19 @@ const runPipeline = async (
       issues,
     );
     currentSpec = repaired.spec ?? currentSpec;
-    directions = repaired.directions ?? directions;
+    const merged = mergeTargetedRevision(
+      repaired.directions ?? directions,
+      context,
+    );
+    directions = merged.plans;
+    preserved = merged.preserved;
   }
 
   if (!hasValidDirectionShape(directions)) {
     throw new InvalidCompilationError();
   }
 
-  return assembleResponse(currentSpec, directions, dependencies);
+  return assembleResponse(currentSpec, directions, dependencies, preserved);
 };
 
 export const compileBrief = async (
@@ -624,11 +717,15 @@ export const reviseCompilation = async (
 ): Promise<ReviseResponse> => {
   const { spec, changes } = await dependencies.planner.reviseSpec(input);
   const context: PlanningContext = {
+    previousDirections: input.previousDirections,
     revision: {
       instruction: input.instruction.trim(),
       targetMode: input.targetMode,
       preserveOtherDirections: input.preserveOtherDirections,
     },
   };
-  return { result: await runPipeline(spec, dependencies, context), changes };
+  const result = await runPipeline(spec, dependencies, context);
+  const parsed = ReviseResponseSchema.safeParse({ result, changes });
+  if (!parsed.success) throw new InvalidCompilationError();
+  return parsed.data;
 };

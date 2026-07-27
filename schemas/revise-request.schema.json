@@ -6,6 +6,7 @@
   "additionalProperties": false,
   "required": [
     "previousSpec",
+    "previousDirections",
     "instruction",
     "targetMode",
     "preserveOtherDirections"
@@ -13,6 +14,55 @@
   "properties": {
     "previousSpec": {
       "$ref": "visual-spec.schema.json"
+    },
+    "previousDirections": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "$ref": "compile-response.schema.json#/properties/directions/items"
+      },
+      "allOf": [
+        {
+          "contains": {
+            "type": "object",
+            "required": ["mode"],
+            "properties": {
+              "mode": {
+                "const": "faithful"
+              }
+            }
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["mode"],
+            "properties": {
+              "mode": {
+                "const": "creative"
+              }
+            }
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["mode"],
+            "properties": {
+              "mode": {
+                "const": "experimental"
+              }
+            }
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ]
     },
     "instruction": {
       "type": "string",

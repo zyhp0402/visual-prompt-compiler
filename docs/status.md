@@ -4,11 +4,38 @@
 
 ## 当前里程碑
 
-- 当前：M2 编译器纯核心
-- 状态：实现、本地 clean-build 与远端 CI 验收全部完成
+- 当前：M3 OpenAI 服务端集成
+- 状态：M3 实现与本地独立验收完成，远端 CI 待验证
 - 远端：https://github.com/zyhp0402/visual-prompt-compiler
-- 边界：只实现 `compiler-core` 的纯业务管线，不接 OpenAI，不修改 UI 或 API route
-- 下一步：仅在用户明确要求后开始 M3
+- 边界：只实现 M3 服务端集成，不修改扩展 UI，不生成图片，不执行真实 OpenAI 调用
+- 下一步：仅在用户明确要求后开始 M4
+
+## M3 已完成（本地）
+
+- `openai-adapter` 使用官方 SDK `responses.parse`、`zodTextFormat` 与 `output_parsed`
+- strict-compatible 最小模型输出 Schema，组装后复验领域 `VisualSpec`、`CompileResponse` 和 `ReviseResponse`
+- `OPENAI_TEXT_MODEL` 环境配置、请求级 45 秒总 deadline、SDK 零重试与预算内最多一次手动重试
+- compile/revise 路由、Zod 边界校验和稳定 ErrorResponse
+- 请求级 planner/usage、定向 revise 原样保留其余方向、非定向 strict patch
+- 配置化扩展来源 CORS、付费路由默认 20/min rate limit、compile 32 KiB 与 revise 512 KiB 独立请求体上限
+- allowlist 结构化日志，包含真实 repair 状态；`LOG_LEVEL` 生效且不记录正文、提示词、错误对象或密钥
+- 超时、429、上游错误、拒绝、空解析和非法输出归一化
+- mock 集成测试与默认禁用的手动 smoke 脚本
+- ADR 0004：模型输出 Schema 与服务端配置边界
+
+## M3 本地验收
+
+- Node 24.14.0、pnpm 11.9.0
+- contracts：13 个契约与 parity 测试通过
+- compiler-core：21 个测试通过
+- adapter：15 个 mock 测试通过
+- API：15 个测试通过
+- `pnpm check`：通过
+  - Prettier、ESLint、TypeScript strict：通过
+  - Vitest：65 个测试通过
+  - 五个 workspace 构建：通过
+  - Playwright Chromium E2E：1 个通过
+- 未设置 `OPENAI_API_KEY`，未执行真实 OpenAI smoke
 
 ## M2 已完成
 
@@ -79,14 +106,15 @@
 
 - 未调用 OpenAI API
 - 已创建纯 `compiler-core`，包含 deterministic fake planner、renderer、lint 与最多一次 repair
-- 未实现模型 adapter，未创建 `openai-adapter` 或 `evals`
+- 已实现 `openai-adapter` 和 compile/revise 服务端路由
+- 未创建 `evals`，未实现 M4 UI 或图片生成
 - 未增加登录、支付、数据库、社区、模型训练或 GitHub 自动抓取
 - 未把 API Key 放入扩展
 
 ## 已知后续风险
 
 - M2 fake planner 只用于稳定验证核心管线，不模拟真实模型对 `creativity` 的质量差异
-- M3 需维护最小模型输出 Schema，并在 adapter 组装后再次校验领域 Schema
+- M3 最小模型输出 Schema 与领域复验已完成；因未提供 API Key，真实 OpenAI smoke 尚未验收
 - 当前基准集仅 10 条，不能证明提示词质量提升
 - 人工偏好发布门槛尚未量化
 

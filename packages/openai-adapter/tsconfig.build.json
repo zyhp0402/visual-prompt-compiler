@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "paths": {
+      "@vpc/contracts": ["../contracts/dist/index.d.ts"],
+      "@vpc/compiler-core": ["../compiler-core/dist/index.d.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["tests/**/*.ts"]
+}

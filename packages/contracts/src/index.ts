@@ -197,6 +197,22 @@ export const DirectionSchema = z
   })
   .strict();
 
+export const DirectionsSchema = z
+  .array(DirectionSchema)
+  .length(3)
+  .superRefine((directions, context) => {
+    const modes = new Set(directions.map(({ mode }) => mode));
+    if (
+      modes.size !== 3 ||
+      !DirectionModeSchema.options.every((mode) => modes.has(mode))
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Directions require one entry per mode',
+      });
+    }
+  });
+
 export const CompileResponseSchema = z
   .object({
     requestId: z.string().uuid(),
@@ -246,6 +262,7 @@ export const CompileResponseSchema = z
 export const ReviseRequestSchema = z
   .object({
     previousSpec: VisualSpecSchema,
+    previousDirections: DirectionsSchema,
     instruction: z.string().min(1).max(4000),
     targetMode: DirectionModeSchema.nullable(),
     preserveOtherDirections: z.boolean(),

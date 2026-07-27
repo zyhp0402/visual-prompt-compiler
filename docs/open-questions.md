@@ -18,11 +18,11 @@
 
 - 首版只为 `poster`、`image_edit`、`storyboard` 生成最小 `taskSpecific` 结构；其余任务使用公共字段，且不修改 v1 外部 Schema。见 ADR 0003。
 
-## M3 前必须决定
+## M3 已定案
 
-1. `OPENAI_TEXT_MODEL` 的默认值和允许列表是什么？必须选择当时官方标注支持 Responses API Structured Outputs 的文本模型；不要把 `gpt-image-2` 用于结构化规划。
-2. 模型输出专用 Schema 的最小字段集合是什么？领域 Schema 已确定因 `allOf` 和可选字段不能直接用于 strict Structured Outputs；adapter 必须解析最小模型输出，再组装并校验领域响应。
-3. 超时、有限重试和 rate limit 的具体默认值是什么？推荐先用 PLAN 的 45 秒总超时、仅对可重试上游错误重试一次；额度数据出现后再调。
+- `OPENAI_TEXT_MODEL` 必须由服务端环境变量提供，不设业务代码默认或允许列表；`.env.example` 仅示例当前模型；
+- adapter 使用最小 strict-compatible Zod schema，组装后再次校验领域 Schema；
+- 每请求共享 45 秒总 deadline；SDK `maxRetries=0`，adapter 在预算内最多手动重试一次。API 默认每分钟 20 次，compile 请求体 32 KiB、revise 请求体 512 KiB。见 ADR 0004。
 
 ## M5 前必须决定
 

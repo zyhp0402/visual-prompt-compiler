@@ -22,4 +22,4 @@ M2 需要在不接入 OpenAI 的情况下稳定验证编译流程。若规划结
 - renderer、lint 和 repair 行为可由固定 fixtures 回归；
 - M3 只需实现 planner adapter，不需要改写核心编排；
 - 分数阈值和更多 `taskSpecific` 类型只有在评测或真实需求出现时再扩展。
-- M2 的 `preserveOtherDirections` 依赖 deterministic planner 对未修改方向的可重复输出。当前 ReviseRequest 不携带旧 directions，因此不能承诺未来非确定性 planner 精确复现未知旧输出；M3 若需要该保证，必须先调整契约并另写 ADR。
+- M3 起 `ReviseRequest` 携带旧 directions；定向修改只规划目标方向，核心按 mode 合并并原样保留其余方向。模型调用上下文不写入 `VisualSpec`。

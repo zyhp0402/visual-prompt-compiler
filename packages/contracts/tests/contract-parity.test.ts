@@ -111,6 +111,7 @@ const validSamples: Record<string, unknown> = {
   'compile-response.schema.json': compileResponse,
   'revise-request.schema.json': {
     previousSpec: visualSpec,
+    previousDirections: compileResponse.directions,
     instruction: '改为蓝白配色',
     targetMode: 'creative',
     preserveOtherDirections: true,
@@ -149,7 +150,11 @@ const invalidSamples: Record<string, unknown> = {
   },
   'revise-request.schema.json': {
     ...(validSamples['revise-request.schema.json'] as Record<string, unknown>),
-    instruction: '',
+    previousDirections: [
+      direction('faithful'),
+      direction('creative'),
+      direction('creative'),
+    ],
   },
   'revise-response.schema.json': {
     ...(validSamples['revise-response.schema.json'] as Record<string, unknown>),
