@@ -5,8 +5,8 @@
 ## 当前里程碑
 
 - 当前：M1 仓库脚手架与契约
-- 状态：实现和本地验收完成；初始提交与 GitHub Actions 尚待完成
-- 下一步：提供本仓库的 Git `user.name` / `user.email`，创建初始提交后做真实 clone；不得自动开始 M2
+- 状态：实现、本地验收、初始提交和真实 clone 验收完成；GitHub Actions 尚待远端验证
+- 下一步：配置 GitHub 远端并取得 `check` workflow 绿色结果；不得自动开始 M2
 
 ## M1 已完成
 
@@ -50,15 +50,20 @@
   - frozen install：通过；
   - 完整 `pnpm check`：通过；
   - 临时副本已移入回收站，可恢复；
+- Git 提交 `155b02ba5cb9cea9594137bfc676af9145d8e395`：
+  - `git clone --no-local`：通过；
+  - clone 中 frozen install：通过；
+  - clone 中完整 `pnpm check`：通过；
+  - 验证后 clone 工作树保持干净；
+  - 临时 clone 已移入回收站，可恢复；
 - 独立对抗性审查：无 P0；状态文档问题已修正。
 
 ## 尚未验收
 
-- 已初始化本地 `main` 仓库，但本机没有配置 Git 姓名和邮箱，因此没有伪造身份创建提交；
-- `git add --dry-run .` 审计得到 52 个应提交文件，依赖、构建产物、`.env` 和测试产物均被忽略；
-- 当前仓库没有远端；
+- 本地 `main` 已使用仓库级身份 `zyhp0402 <z13055170115@gmail.com>` 创建初始提交；
+- 当前仓库仍没有远端；
 - `.github/workflows/check.yml` 尚未在 GitHub Actions 中实际运行，不能声称 CI 绿色；
-- 因还没有提交，暂时无法执行字面意义的真实 clone；已用无依赖/无构建产物的干净副本完成等价本地复现。
+- 真实本地 clone 已通过，但不能替代 GitHub 托管环境的 CI 结果。
 
 取得仓库和远端后需要：
 
@@ -93,6 +98,7 @@ pnpm check
 - `git init -b main`
 - `git add --dry-run .`
 - `git check-ignore -v -- playwright-report/index.html`
+- `git clone --no-local <local-repo> <temp-clone>`
 - `pnpm install --frozen-lockfile`
 - `pnpm format:check`
 - `pnpm lint`
