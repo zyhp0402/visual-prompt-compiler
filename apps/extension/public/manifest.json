@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "description": "将视觉需求整理为可检查的提示词规格。",
   "permissions": ["sidePanel", "storage"],
+  "host_permissions": ["http://127.0.0.1/*", "http://localhost/*"],
   "side_panel": {
     "default_path": "sidepanel.html"
   }

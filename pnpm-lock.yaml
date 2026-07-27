@@ -63,6 +63,9 @@ importers:
 
   apps/extension:
     dependencies:
+      '@vpc/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       react:
         specifier: 19.2.8
         version: 19.2.8

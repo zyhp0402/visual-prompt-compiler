@@ -4,7 +4,10 @@
     "jsx": "react-jsx",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "noEmit": true,
-    "types": ["chrome", "node", "vite/client"]
+    "types": ["chrome", "node", "vite/client"],
+    "paths": {
+      "@vpc/contracts": ["../../packages/contracts/src/index.ts"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "vite.config.ts"]
 }

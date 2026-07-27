@@ -4,11 +4,47 @@
 
 ## 当前里程碑
 
-- 当前：M3 OpenAI 服务端集成
-- 状态：M3 实现、本地独立验收与远端 CI 全部完成
+- 当前：M4 Chrome Side Panel 主流程
+- 状态：M4 实现与本地独立验收完成，远端 CI 待验证
 - 远端：https://github.com/zyhp0402/visual-prompt-compiler
-- 边界：只实现 M3 服务端集成，不修改扩展 UI，不生成图片，不执行真实 OpenAI 调用
-- 下一步：仅在用户明确要求后开始 M4
+- 边界：只实现 M4 扩展主流程，不生成图片，不执行真实 OpenAI 调用，不开始 M5 评测系统
+- 下一步：先验证 M4 远端 CI；仅在用户明确要求后开始 M5
+
+## M4 已完成（本地）
+
+- 中文简报表单：自动/手动任务类型、比例、固定文字、必须/禁止元素、创意自由度和折叠高级设置
+- 暖灰纸面、深墨文字、朱红批注的“编辑台/校样纸”侧边栏；本机中文字体栈、可见焦点和 reduced-motion
+- API 客户端读取 `VITE_API_BASE_URL`，默认 `http://127.0.0.1:8787`
+- 使用共享 contracts 校验 CompileResponse、ReviseResponse 和 ErrorResponse
+- 展示标准化 VisualSpec 摘要、假设、风险、三方向、完整/精简提示词、复制反馈和定向 revise
+- revise 发送完整 `previousSpec`、三份 `previousDirections` 并保留非目标方向
+- 单键 `chrome.storage.local` v2 状态；v1 迁移删除原始 request/brief，历史只保存结果与最小派生标签
+- hydration 与 functional update 使用同一串行队列；非规范数据在 load 返回前物理回写 sanitized v2
+- 串行 update 避免延迟 load 或异步历史写入覆盖并发设置、收藏或清空
+- 递增 operation id 防止慢请求在新建或恢复后回灌；新 compile 立即移除旧结果
+- 清空不取消在途网络请求；独立 history generation 让结果照常展示但不重写已清空历史
+- 历史、收藏、清空、回放及设置/存储异步错误提示
+- compile/revise/恢复成功 aria-live 播报、结果焦点管理和清空前稳定焦点转移
+- timeout、offline、rate limited、invalid output、upstream 与 invalid request 状态及可重试路径
+- host permissions 仅新增 `http://127.0.0.1/*` 和 `http://localhost/*`
+- ADR 0005：扩展本地状态与 API 边界
+
+## M4 本地验收
+
+- 扩展单测：19 个通过，覆盖 API 错误分类、body 阶段超时、contracts 响应校验、storage 物理隐私迁移/损坏回退/容量上限、排队 hydration 与并发写入
+- 扩展 TypeScript strict 与生产构建：通过
+- 真实 unpacked Chromium E2E：2 个通过
+  - 本地 mock HTTP server 下完成表单 compile、三方向、复制、收藏/历史持久化和定向 revise
+  - 可控覆盖 timeout、offline、rate-limit 和 invalid-output
+  - 验证敏感 brief 不进入 storage、慢请求不回灌、成功后失败不保留旧结果、成功/恢复/清空焦点
+  - 预置含敏感 request 的 v1 storage，打开后验证物理删除；慢请求期间清空历史仍展示结果且历史保持为空
+- `pnpm check`：通过
+  - Prettier、ESLint、TypeScript strict：通过
+  - Vitest：83 个测试通过
+  - 五个 workspace 构建：通过
+  - Playwright Chromium E2E：2 个通过
+- manifest 权限扫描：未新增 `activeTab`、`<all_urls>`、`contextMenus` 或 `unlimitedStorage`
+- 未设置 `OPENAI_API_KEY`，未调用真实 OpenAI
 
 ## M3 已完成
 
@@ -109,7 +145,8 @@
 - 未调用 OpenAI API
 - 已创建纯 `compiler-core`，包含 deterministic fake planner、renderer、lint 与最多一次 repair
 - 已实现 `openai-adapter` 和 compile/revise 服务端路由
-- 未创建 `evals`，未实现 M4 UI 或图片生成
+- 已实现 M4 Side Panel 主流程、版本化本地历史与收藏
+- 未创建 `evals`，未实现 M5 评测或图片生成
 - 未增加登录、支付、数据库、社区、模型训练或 GitHub 自动抓取
 - 未把 API Key 放入扩展
 
@@ -117,6 +154,7 @@
 
 - M2 fake planner 只用于稳定验证核心管线，不模拟真实模型对 `creativity` 的质量差异
 - M3 最小模型输出 Schema 与领域复验已完成；因未提供 API Key，真实 OpenAI smoke 尚未验收
+- M4 E2E 使用本地 mock API；真实 OpenAI 驱动的端到端内容质量仍未验收
 - 当前基准集仅 10 条，不能证明提示词质量提升
 - 人工偏好发布门槛尚未量化
 
@@ -131,6 +169,9 @@
 - `pnpm build`
 - `pnpm test:e2e`
 - `pnpm check`
+- `pnpm --filter @vpc/extension test`
+- `pnpm --filter @vpc/extension typecheck`
+- `pnpm --filter @vpc/extension build`
 - `Invoke-RestMethod http://127.0.0.1:8787/health`
 - `rg -a -n 'OPENAI_API_KEY|sk-[A-Za-z0-9]' apps/extension/dist`
 - `pnpm -r list --depth -1`

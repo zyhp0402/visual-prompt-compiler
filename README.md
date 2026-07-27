@@ -1,6 +1,6 @@
 # Visual Prompt Compiler
 
-Chrome Manifest V3 Side Panel + Fastify 的 pnpm monorepo。当前完成 M3：服务端通过 Responses API structured outputs 驱动纯 `compiler-core`，扩展仍是 M1 空侧边栏。
+Chrome Manifest V3 Side Panel + Fastify 的 pnpm monorepo。当前完成 M4：中文侧边栏通过服务端 compile/revise API 生成三份方向，并在 `chrome.storage.local` 保存历史与收藏。
 
 ## 前置条件
 
@@ -35,6 +35,21 @@ pnpm build
 ```text
 apps\extension\dist
 ```
+
+首次加载后，在 `chrome://extensions` 复制扩展 ID，把实际来源加入服务端环境变量：
+
+```dotenv
+ALLOWED_EXTENSION_ORIGINS=chrome-extension://<id>
+```
+
+扩展 API 基址由根目录 `.env` 的 `VITE_API_BASE_URL` 在构建时注入，未设置时默认：
+
+```dotenv
+VITE_API_BASE_URL=http://127.0.0.1:8787
+```
+
+修改 API 基址后需要重新执行 `pnpm build`。扩展只申请
+`http://127.0.0.1/*` 和 `http://localhost/*` 两个本机 host permissions。
 
 验证 API：
 
@@ -78,7 +93,8 @@ curl http://127.0.0.1:8787/health
 kill "$api_pid"
 ```
 
-Chrome/Chromium 中加载 `apps/extension/dist`。
+Chrome/Chromium 中加载 `apps/extension/dist`，再把
+`chrome-extension://<id>` 加入 `ALLOWED_EXTENSION_ORIGINS`。
 
 ## 根命令
 
@@ -93,7 +109,7 @@ Chrome/Chromium 中加载 `apps/extension/dist`。
 
 ## 环境变量
 
-复制 `.env.example` 后仅在服务端环境填写 `OPENAI_API_KEY`、`OPENAI_TEXT_MODEL` 和允许的扩展来源。密钥不得进入扩展 bundle。
+复制 `.env.example` 后仅在服务端环境填写 `OPENAI_API_KEY`、`OPENAI_TEXT_MODEL` 和允许的扩展来源。`VITE_API_BASE_URL` 只包含 API 地址；密钥不得进入扩展 bundle 或 `chrome.storage.local`。
 
 真实 OpenAI smoke test 默认禁用。先启动 API，再显式执行：
 
