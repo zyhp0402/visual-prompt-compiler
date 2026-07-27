@@ -1,9 +1,12 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": ".",
+    "rootDir": "..",
     "outDir": "dist",
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@vpc/contracts": ["../contracts/src/index.ts"]
+    }
   },
   "include": ["src/**/*.ts", "tests/**/*.ts"]
 }
