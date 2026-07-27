@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/revise-response.schema.json",
+  "title": "ReviseResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["result", "changes"],
+  "properties": {
+    "result": {
+      "$ref": "compile-response.schema.json"
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "before", "after"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "before": {
+            "type": ["string", "null"]
+          },
+          "after": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    }
+  }
+}

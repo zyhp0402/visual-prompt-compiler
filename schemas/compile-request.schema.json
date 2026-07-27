@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/compile-request.schema.json",
+  "title": "CompileRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "brief",
+    "taskType",
+    "aspectRatio",
+    "mandatoryText",
+    "mandatoryElements",
+    "forbiddenElements",
+    "creativity",
+    "allowAssumptions",
+    "outputLanguage"
+  ],
+  "properties": {
+    "brief": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 10000
+    },
+    "taskType": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "poster",
+        "photography",
+        "product_concept",
+        "three_d_scene",
+        "infographic",
+        "character_design",
+        "image_edit",
+        "storyboard",
+        "general"
+      ]
+    },
+    "aspectRatio": {
+      "type": "string",
+      "anyOf": [
+        {
+          "enum": ["auto", "1:1", "4:3", "3:4", "16:9", "9:16"]
+        },
+        {
+          "pattern": "^[1-9][0-9]*(?:\\.[0-9]+)?:[1-9][0-9]*(?:\\.[0-9]+)?$"
+        }
+      ]
+    },
+    "mandatoryText": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "mandatoryElements": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "forbiddenElements": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "creativity": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "allowAssumptions": {
+      "type": "boolean"
+    },
+    "outputLanguage": {
+      "type": "string",
+      "minLength": 2
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/revise-request.schema.json",
+  "title": "ReviseRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "previousSpec",
+    "instruction",
+    "targetMode",
+    "preserveOtherDirections"
+  ],
+  "properties": {
+    "previousSpec": {
+      "$ref": "visual-spec.schema.json"
+    },
+    "instruction": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "targetMode": {
+      "type": ["string", "null"],
+      "enum": ["faithful", "creative", "experimental", null]
+    },
+    "preserveOtherDirections": {
+      "type": "boolean"
+    }
+  }
+}

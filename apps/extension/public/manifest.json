@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "视觉提示词编译器",
+  "version": "0.0.0",
+  "description": "将视觉需求整理为可检查的提示词规格。",
+  "permissions": ["sidePanel", "storage"],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  }
+}
