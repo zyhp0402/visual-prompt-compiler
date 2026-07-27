@@ -5,12 +5,12 @@
 ## 当前里程碑
 
 - 当前：M4 Chrome Side Panel 主流程
-- 状态：M4 实现与本地独立验收完成，远端 CI 待验证
+- 状态：M4 实现、本地独立验收与远端 CI 全部完成
 - 远端：https://github.com/zyhp0402/visual-prompt-compiler
 - 边界：只实现 M4 扩展主流程，不生成图片，不执行真实 OpenAI 调用，不开始 M5 评测系统
-- 下一步：先验证 M4 远端 CI；仅在用户明确要求后开始 M5
+- 下一步：仅在用户明确要求后开始 M5
 
-## M4 已完成（本地）
+## M4 已完成
 
 - 中文简报表单：自动/手动任务类型、比例、固定文字、必须/禁止元素、创意自由度和折叠高级设置
 - 暖灰纸面、深墨文字、朱红批注的“编辑台/校样纸”侧边栏；本机中文字体栈、可见焦点和 reduced-motion
@@ -29,7 +29,7 @@
 - host permissions 仅新增 `http://127.0.0.1/*` 和 `http://localhost/*`
 - ADR 0005：扩展本地状态与 API 边界
 
-## M4 本地验收
+## M4 验收结果
 
 - 扩展单测：19 个通过，覆盖 API 错误分类、body 阶段超时、contracts 响应校验、storage 物理隐私迁移/损坏回退/容量上限、排队 hydration 与并发写入
 - 扩展 TypeScript strict 与生产构建：通过
@@ -43,6 +43,10 @@
   - Vitest：83 个测试通过
   - 五个 workspace 构建：通过
   - Playwright Chromium E2E：2 个通过
+- GitHub Actions run `30249241106` 首次失败：clean env 中根 E2E typecheck 无法解析尚未构建的 `@vpc/contracts` 类型，连带产生 direction 隐式 `any`
+- 最小修复：根 `tsconfig.json` 按现有 workspace 模式把 contracts 映射到源码，并为 E2E direction 增加由 fixture 数组派生的显式类型；移走全部 workspace dist 后 frozen install 与完整 `pnpm check` 通过
+- GitHub Actions 修复验证：run `30250024999` 绿色
+  - https://github.com/zyhp0402/visual-prompt-compiler/actions/runs/30250024999
 - manifest 权限扫描：未新增 `activeTab`、`<all_urls>`、`contextMenus` 或 `unlimitedStorage`
 - 未设置 `OPENAI_API_KEY`，未调用真实 OpenAI
 
@@ -178,3 +182,5 @@
 - `gh run watch 30233559713 --repo zyhp0402/visual-prompt-compiler --exit-status`
 - `gh run watch 30237240786 --repo zyhp0402/visual-prompt-compiler --exit-status`
 - `gh run watch 30245314997 --repo zyhp0402/visual-prompt-compiler --exit-status`
+- `gh run watch 30249241106 --repo zyhp0402/visual-prompt-compiler --exit-status`
+- `gh run watch 30250024999 --repo zyhp0402/visual-prompt-compiler --exit-status`
