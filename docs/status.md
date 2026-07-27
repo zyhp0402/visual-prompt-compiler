@@ -5,7 +5,7 @@
 ## 当前里程碑
 
 - 当前：M2 编译器纯核心
-- 状态：实现与本地 clean-build 验收完成，远端 CI 修复待验证
+- 状态：实现、本地 clean-build 与远端 CI 验收全部完成
 - 远端：https://github.com/zyhp0402/visual-prompt-compiler
 - 边界：只实现 `compiler-core` 的纯业务管线，不接 OpenAI，不修改 UI 或 API route
 - 下一步：仅在用户明确要求后开始 M3
@@ -25,7 +25,9 @@
 
 - GitHub Actions run `30236795009` 首次失败：干净环境没有 `packages/contracts/dist`，`compiler-core` typecheck 通过包 exports 找不到 contracts 类型；本地残留 dist 掩盖了该问题
 - 修复：开发态 typecheck 通过 TypeScript paths 解析 contracts 源码，Vitest 使用 `development` export，build 仍解析 contracts 的 dist 声明
-- 清空四个 workspace 的 `dist` 后，`pnpm install --frozen-lockfile` 与完整 `pnpm check` 通过；远端修复结果仍待新 CI run 验证
+- 清空四个 workspace 的 `dist` 后，`pnpm install --frozen-lockfile` 与完整 `pnpm check` 通过
+- GitHub Actions 修复验证：run `30237240786` 绿色
+  - https://github.com/zyhp0402/visual-prompt-compiler/actions/runs/30237240786
 - 固定运行时：Node 24.14.0、pnpm 11.9.0
 - `pnpm --filter @vpc/compiler-core test`：18 个测试通过
 - `pnpm --filter @vpc/compiler-core typecheck`：通过
@@ -103,3 +105,4 @@
 - `rg -a -n 'OPENAI_API_KEY|sk-[A-Za-z0-9]' apps/extension/dist`
 - `pnpm -r list --depth -1`
 - `gh run watch 30233559713 --repo zyhp0402/visual-prompt-compiler --exit-status`
+- `gh run watch 30237240786 --repo zyhp0402/visual-prompt-compiler --exit-status`
