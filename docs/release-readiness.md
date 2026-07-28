@@ -25,8 +25,8 @@
 - `pnpm licenses list --prod --json`：仅 MIT、BSD-3-Clause、ISC、Apache-2.0。
 - Side Panel：JavaScript 293.92 kB（gzip 89.31 kB），CSS 10.14 kB（gzip 2.92 kB），HTML 0.42 kB（gzip 0.31 kB）；M8 未增加运行时代码。
 - Windows 候选包：`visual-prompt-compiler-0.1.0.zip`，92,033 bytes，当前工作区 SHA-256 `a62cd5ecd3d71a4ba5842d7cd531332764ffc5eed1c6737ecb32feddc66d033b`，4 个文件。
-- 同一 Windows 宿主上的独立 clean clone `f2985bf994310fca20f52080daa28d446c280251`：空工作目录、无 `node_modules`/`dist`，Node 24.14.0 / pnpm 11.9.0 frozen install、完整 `pnpm check`、2/2 unpacked-extension E2E 和 Windows 打包均通过。没有使用全新 OS/VM 或空 pnpm 全局 store，结论不扩大到该范围。
-- clean clone 的逐文件 SHA-256 清单与当前工作区完全一致；ZIP SHA-256 为 `b1720977e196235f579bdabc5cdc6f193c4a549843c3c366a189baedf62ae514`。`Compress-Archive` 保留文件时间元数据，因此 ZIP 总哈希只标识当次产物，不承诺跨目录 byte-for-byte 一致。
+- 同一 Windows 宿主上的独立 clean clone `ea030cd84aeb4a8bce8109d9049530216969cadc`：空工作目录、无 `node_modules`/`dist`，Node 24.14.0 / pnpm 11.9.0 frozen install、完整 `pnpm check`、2/2 unpacked-extension E2E 和 Windows 打包均通过。没有使用全新 OS/VM 或空 pnpm 全局 store，结论不扩大到该范围。
+- clean clone 的逐文件 SHA-256 清单与当前工作区完全一致；ZIP SHA-256 为 `064aee006aef01d8574d74be4d51e003fb15c7c53f77c2fb0e18287182c1f0ad`。`Compress-Archive` 保留文件时间元数据，因此 ZIP 总哈希只标识当次产物，不承诺跨目录 byte-for-byte 一致。
 
 ## 发布门
 
@@ -41,6 +41,8 @@
 | Chrome Web Store 政策/隐私表单    | 阻塞                     |
 
 没有任何发布门被静默豁免。只有具备发布权限的负责人可以书面接受剩余风险；M8 不执行商店发布。
+
+独立对抗审查、验证审查和 Ponytail 复杂度审查提出的 manifest 能力、`.env*`、性能边界、clean-clone 措辞、回滚重启和隐私披露问题均已修正；最终无剩余 P0/P1。
 
 ## 性能分析
 
