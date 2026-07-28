@@ -5,10 +5,10 @@
 ## 当前里程碑
 
 - 当前：M6 案例模式库实验
-- 状态：M6 实现与本地全量验收完成，等待提交与远端 CI
+- 状态：M6 实现、本地独立验收与远端 CI 全部完成
 - 远端：https://github.com/zyhp0402/visual-prompt-compiler
 - 边界：只实现默认关闭的 M6 本地案例实验，不生成图片，不调用真实 OpenAI，不开始 M7
-- 下一步：审查并提交 M6，随后验证远端 CI；后续里程碑必须由用户明确要求
+- 下一步：仅在用户明确要求后开始 M7
 
 ## M6 已完成
 
@@ -24,6 +24,7 @@
 
 ## M6 验收结果
 
+- 远端提交 [`d618cb6`](https://github.com/zyhp0402/visual-prompt-compiler/commit/d618cb6)；GitHub Actions 绿色运行 [`30323432763`](https://github.com/zyhp0402/visual-prompt-compiler/actions/runs/30323432763)
 - Node 24.14.0 / pnpm 11.9.0
 - contracts 15、compiler-core 27、openai-adapter 17、evals 27、API 15、扩展 20 个测试通过
 - A/B：10 benchmark × 2 arms；两臂 Schema 10/10、固定文字 42/42、禁止项 0/84、冲突 1、方向差异 10/10
@@ -234,3 +235,4 @@
 - `gh run watch 30245314997 --repo zyhp0402/visual-prompt-compiler --exit-status`
 - `gh run watch 30249241106 --repo zyhp0402/visual-prompt-compiler --exit-status`
 - `gh run watch 30250024999 --repo zyhp0402/visual-prompt-compiler --exit-status`
+- `gh run watch 30323432763 --repo zyhp0402/visual-prompt-compiler --exit-status`
