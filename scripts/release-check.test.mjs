@@ -46,6 +46,15 @@ test('rejects source maps, extra permissions, and bundled secrets', async () => 
         }),
       ),
     (directory) =>
+      writeFile(
+        join(directory, 'manifest.json'),
+        JSON.stringify({
+          ...manifest,
+          content_scripts: [{ matches: ['https://*/*'], js: ['content.js'] }],
+        }),
+      ),
+    (directory) => writeFile(join(directory, '.env.production'), 'SECRET=x'),
+    (directory) =>
       writeFile(join(directory, 'assets', 'index.js'), 'OPENAI_API_KEY'),
   ]) {
     const directory = await fixture();

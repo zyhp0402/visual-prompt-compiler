@@ -2,7 +2,7 @@
 
 ## 立即止损
 
-1. 设置服务端 `ENABLE_IMAGE_GENERATION=false`，停止新的图片费用。
+1. 设置服务端 `ENABLE_IMAGE_GENERATION=false` 后重启或重新部署服务，并确认 `/v1/generate` 返回 503，停止新的图片费用。
 2. 如文本链路异常，撤下 API 流量或回滚到最后一个已验证服务端提交。
 3. 吊销疑似泄漏的 Key，并检查脱敏日志中的 request ID、错误码和时间窗口；不要复制用户正文。
 

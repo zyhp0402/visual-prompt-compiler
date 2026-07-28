@@ -14,7 +14,7 @@
 | 日志/遥测    | 通过 | Fastify 默认请求日志关闭；allowlist 日志不含 brief、prompt、固定文案、错误对象或 base64；无分析 SDK |
 | 本地数据     | 通过 | 有容量上限和清空入口；迁移移除旧版原始 request/brief；图片不持久化                                  |
 | 案例权利     | 通过 | 4 条 synthetic CC0-1.0 approved；权利和哈希 gate                                                    |
-| 构建产物     | 通过 | 自动拒绝源码映射、TS/TSX/JSX、密钥标记和额外权限                                                    |
+| 构建产物     | 通过 | 自动拒绝源码映射、TS/TSX/JSX、`.env*`、密钥标记和未审查的 manifest 顶层能力                         |
 | 依赖漏洞     | 通过 | 58 个生产依赖，info/low/moderate/high/critical 均为 0                                               |
 | 生产依赖许可 | 通过 | `pnpm licenses list --prod --json` 仅报告 MIT、BSD-3-Clause、ISC、Apache-2.0                        |
 

@@ -2,13 +2,13 @@
 
 ## 构建候选包
 
-- [ ] 使用 Node 24.14.x、pnpm 11.9.0 和 frozen lockfile。
-- [ ] `pnpm check` 全绿。
-- [ ] `pnpm audit --prod` 已复核且无未处置的 high/critical。
-- [ ] `pnpm release:package:windows` 成功。
-- [ ] `.sha256` 与 ZIP 的 `Get-FileHash -Algorithm SHA256` 一致。
-- [ ] `.files.txt` 与 ZIP 内容一致；无 source map、源码、`.env`、密钥或多余权限。
-- [ ] 在干净 Windows clone 中加载 unpacked extension 并跑现有 Playwright E2E。
+- [x] 使用 Node 24.14.x、pnpm 11.9.0 和 frozen lockfile。
+- [x] `pnpm check` 全绿。
+- [x] `pnpm audit --prod` 已复核且无未处置的 high/critical。
+- [x] `pnpm release:package:windows` 成功。
+- [x] `.sha256` 与 ZIP 的 `Get-FileHash -Algorithm SHA256` 一致。
+- [x] `.files.txt` 与 ZIP 内容一致；无 source map、源码、`.env*`、密钥或未审查的 manifest 能力。
+- [x] 在同一 Windows 宿主的干净 clone 中加载 unpacked extension 并跑现有 Playwright E2E。
 
 ## 部署与政策
 

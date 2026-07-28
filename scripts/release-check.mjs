@@ -7,6 +7,15 @@ const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const defaultDist = resolve(root, 'apps/extension/dist');
 const allowedPermissions = ['sidePanel', 'storage'];
 const allowedHosts = ['http://127.0.0.1/*', 'http://localhost/*'];
+const allowedManifestKeys = new Set([
+  'manifest_version',
+  'name',
+  'version',
+  'description',
+  'permissions',
+  'host_permissions',
+  'side_panel',
+]);
 const forbiddenNames = new Set(['.env', '.git', 'node_modules']);
 const forbiddenExtensions = /\.(?:map|ts|tsx|jsx)$/i;
 const forbiddenContent = [
@@ -29,6 +38,9 @@ const validChromeVersion = (value) => {
     )
   );
 };
+
+const forbiddenPathPart = (part) =>
+  forbiddenNames.has(part) || part.startsWith('.env.');
 
 const filesUnder = async (directory) => {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -61,13 +73,19 @@ export async function validateReleaseTree(distDirectory = defaultDist) {
   ) {
     throw new Error('Unexpected extension host permissions');
   }
+  const unexpectedManifestKey = Object.keys(manifest).find(
+    (key) => !allowedManifestKeys.has(key),
+  );
+  if (unexpectedManifestKey) {
+    throw new Error(`Unexpected manifest capability: ${unexpectedManifestKey}`);
+  }
 
   const files = await filesUnder(dist);
   if (files.length === 0) throw new Error('Release tree is empty');
   for (const file of files) {
     const name = relative(dist, file).split(sep).join('/');
     if (
-      name.split('/').some((part) => forbiddenNames.has(part)) ||
+      name.split('/').some(forbiddenPathPart) ||
       forbiddenExtensions.test(name)
     ) {
       throw new Error(`Forbidden release file: ${name}`);
