@@ -8,3 +8,4 @@ test-results/
 artifacts/evals/*.json
 artifacts/evals/*.md
 !artifacts/evals/README.md
+artifacts/release/

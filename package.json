@@ -18,10 +18,13 @@
     "eval:real": "node scripts/eval-real-preflight.mjs && pnpm build && node packages/evals/dist/cli.js --mode real",
     "eval:versions": "pnpm --filter @vpc/contracts build && pnpm --filter @vpc/compiler-core build && pnpm --filter @vpc/openai-adapter build && pnpm --filter @vpc/evals build && node packages/evals/dist/version-cli.js check",
     "eval:approve": "pnpm --filter @vpc/contracts build && pnpm --filter @vpc/compiler-core build && pnpm --filter @vpc/openai-adapter build && pnpm --filter @vpc/evals build && node packages/evals/dist/version-cli.js approve",
+    "release:check": "node scripts/release-check.mjs",
+    "release:package:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-extension.ps1",
+    "test:release": "node --test scripts/release-check.test.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r --if-present typecheck",
     "format:check": "prettier --check .",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && node packages/evals/dist/version-cli.js check && pnpm test:e2e"
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:release && pnpm build && pnpm release:check && node packages/evals/dist/version-cli.js check && pnpm test:e2e"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

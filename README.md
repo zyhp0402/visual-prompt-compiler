@@ -2,6 +2,8 @@
 
 Chrome Manifest V3 Side Panel + Fastify 的 pnpm monorepo。当前实现 M7：在默认关闭的服务端开关后提供 GPT Image 2 单图低质量预览和显式图片反馈闭环。
 
+发布加固文档见 [发布就绪报告](docs/release-readiness.md)、[发布检查表](docs/release-checklist.md)、[隐私说明](docs/privacy.md)和[回滚说明](docs/rollback.md)。
+
 ## 前置条件
 
 - Node.js 24.14.x；
@@ -110,6 +112,8 @@ Chrome/Chromium 中加载 `apps/extension/dist`，再把
 - `pnpm eval:real`：显式运行真实双臂基准；
 - `pnpm eval:versions`：检查 prompt/schema 版本审批记录；
 - `pnpm eval:approve`：显式更新版本审批记录；
+- `pnpm release:check`：检查构建后的 manifest、权限、敏感标记、源码和 source map；
+- `pnpm release:package:windows`：在 Windows 生成 ZIP、SHA-256 和逐文件清单到 `artifacts/release/`；
 - `pnpm check`：依次执行全部检查、构建和 E2E。
 
 ## 环境变量

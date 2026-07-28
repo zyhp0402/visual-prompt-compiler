@@ -4,11 +4,22 @@
 
 ## 当前里程碑
 
-- 当前：M7 GPT Image 2 预览与图片反馈
-- 状态：M7 实现、本地验收、独立对抗审查与远端 CI 全部完成
+- 当前：M8 发布加固
+- 状态：发布脚本、文档和本地完整验证已完成，等待独立 clean Windows 复现
 - 远端：https://github.com/zyhp0402/visual-prompt-compiler
-- 边界：只实现默认关闭的 M7 单图低质量预览；不调用真实 OpenAI，不上传参考图，不开始 M8
-- 下一步：M8 必须由用户明确要求
+- 边界：只做发布加固；不调用真实 OpenAI、不发布 Chrome Web Store、不增加产品功能、权限或依赖
+- 下一步：完成 M8 验证后，由负责人处理真实质量、生产部署和商店政策阻塞
+
+## M8 当前进展
+
+- manifest 候选版本提升为 `0.1.0`，权限不变
+- 新增跨平台 release tree 检查，并纳入 `pnpm check`
+- 新增 Windows ZIP、SHA-256 和逐文件清单流程；产物写入已忽略的 `artifacts/release/`
+- 新增隐私、案例许可证、安全审查、发布检查表、回滚和发布就绪文档
+- 本地 `pnpm check` 全绿；146 个 Vitest、3 个 release-check 测试和 2 个 Playwright E2E 通过
+- 生产依赖漏洞为 0；许可证仅 MIT、BSD-3-Clause、ISC、Apache-2.0
+- 已生成 0.1.0 候选 ZIP、逐文件清单和 SHA-256；产物不提交 Git
+- 公开/商店发布仍被真实 OpenAI、视觉质量、人工偏好门和商店政策验证阻塞；无静默豁免
 
 ## M7 已完成
 
