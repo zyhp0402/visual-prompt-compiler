@@ -5,10 +5,10 @@
 ## 当前里程碑
 
 - 当前：M7 GPT Image 2 预览与图片反馈
-- 状态：M7 实现、全量本地验收与独立对抗审查完成，等待提交与远端 CI
+- 状态：M7 实现、本地验收、独立对抗审查与远端 CI 全部完成
 - 远端：https://github.com/zyhp0402/visual-prompt-compiler
 - 边界：只实现默认关闭的 M7 单图低质量预览；不调用真实 OpenAI，不上传参考图，不开始 M8
-- 下一步：提交并验证 M7 远端 CI；M8 必须由用户明确要求
+- 下一步：M8 必须由用户明确要求
 
 ## M7 已完成
 
@@ -25,10 +25,12 @@
 
 ## M7 当前验收结果
 
+- 远端提交 [`df6be93`](https://github.com/zyhp0402/visual-prompt-compiler/commit/df6be93)；GitHub Actions 绿色运行 [`30334765243`](https://github.com/zyhp0402/visual-prompt-compiler/actions/runs/30334765243)
 - `pnpm check` 通过：格式、lint、strict typecheck、146 个 Vitest、全部 build、版本门禁和 2 个 Playwright E2E 全绿
 - E2E 覆盖预览、费用提示、反馈、显式 revise、手动重试、全局 single-flight、旧结果失效和图片不持久化
 - 独立对抗审查首轮发现 0 个 P0、4 个实质问题；付费并发/异步回灌、比例映射、PNG 边界和错误分类均已修正并回归
 - 全部图片与 SDK 调用均为 mock；未调用真实 OpenAI API，未安装依赖，未实施 M8
+- CI 仅有 Actions 运行时 Node.js 20 弃用提示；任务仍在 Node 24 下绿色完成，升级第三方 Action 版本留待独立维护任务
 
 ## M6 已完成
 
