@@ -1,4 +1,5 @@
 import { createOpenAIPlanner } from '@vpc/openai-adapter';
+import { createOpenAIImageGenerator } from '@vpc/openai-adapter/image';
 
 import { buildApp } from './app.js';
 import { loadConfig } from './config.js';
@@ -12,6 +13,15 @@ const app = buildApp({
       model: config.textModel,
       timeoutMs: config.timeoutMs,
     }),
+  ...(config.enableImageGeneration
+    ? {
+        imageGenerator: createOpenAIImageGenerator({
+          apiKey: config.apiKey,
+          model: config.imageModel,
+          timeoutMs: config.timeoutMs,
+        }),
+      }
+    : {}),
 });
 
 try {

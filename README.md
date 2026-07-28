@@ -1,6 +1,6 @@
 # Visual Prompt Compiler
 
-Chrome Manifest V3 Side Panel + Fastify 的 pnpm monorepo。当前完成 M6：案例模式检索实验保持默认关闭，只提供本地合规模式、相似度检查和离线 A/B 证据。
+Chrome Manifest V3 Side Panel + Fastify 的 pnpm monorepo。当前实现 M7：在默认关闭的服务端开关后提供 GPT Image 2 单图低质量预览和显式图片反馈闭环。
 
 ## 前置条件
 
@@ -114,7 +114,14 @@ Chrome/Chromium 中加载 `apps/extension/dist`，再把
 
 ## 环境变量
 
-复制 `.env.example` 后仅在服务端环境填写 `OPENAI_API_KEY`、`OPENAI_TEXT_MODEL` 和允许的扩展来源。`VITE_API_BASE_URL` 只包含 API 地址；密钥不得进入扩展 bundle 或 `chrome.storage.local`。
+复制 `.env.example` 后仅在服务端环境填写 `OPENAI_API_KEY`、`OPENAI_TEXT_MODEL`、`OPENAI_IMAGE_MODEL` 和允许的扩展来源。`VITE_API_BASE_URL` 只包含 API 地址；密钥不得进入扩展 bundle 或 `chrome.storage.local`。图片预览默认关闭：
+
+```dotenv
+OPENAI_IMAGE_MODEL=gpt-image-2
+ENABLE_IMAGE_GENERATION=false
+```
+
+只有完成组织/项目验证、额度与费用确认后，才在服务端显式设置 `ENABLE_IMAGE_GENERATION=true`。扩展不保存 API Key。
 
 真实 OpenAI smoke test 默认禁用。先启动 API，再显式执行：
 
@@ -171,3 +178,11 @@ pnpm eval:cases:mock -- --run-id local-cases --now 2026-07-28T00:00:00.000Z
 ```
 
 当前 10 条 benchmark 少于 Gate A 要求的 100 条，且没有人工偏好数据；mock 硬指标无提升，并有 18/30 个方向因原样注入摘要而触发相似度标记。因此实验建议为 `remove`，但这只是一项证据结论，不会自动删除实验代码、改写输出或启用产品功能；`ENABLE_CASE_RETRIEVAL=false` 不变，API 与 Side Panel 尚未接入实验检索。
+
+## GPT Image 2 单图预览
+
+`POST /v1/generate` 使用独立 `image-1` 契约。请求固定为文本 source、`n=1`、`quality=low`、`outputFormat=png`，尺寸只允许 `1024x1024`、`1536x1024`、`1024x1536`。服务端使用 `gpt-image-2` 的 `images.generate`，SDK `maxRetries=0`；失败后只有用户再次点击“手动重试生成”才会发起下一次调用。
+
+每个方向的入口都会提示一次付费图片调用。返回的 PNG base64 只存在于当前 React 页面内存，不写入历史、收藏或 `chrome.storage.local`，刷新即消失。图片失败反馈只生成保留硬约束的 revise instruction，并填入现有修改表单；用户必须显式点击“提交修改”，系统不会自动 revise 或连续生成第二批图片。
+
+参考图未来进入 Images edits 边界。本轮不增加上传、参考图持久化或扩展权限。单元、集成和 E2E 均使用 mock，不调用真实 Images API。

@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { crc32, deflateSync } from 'node:zlib';
 import {
   createDeterministicFakePlanner,
   normalizeInput,
@@ -13,6 +14,7 @@ import {
   normalizeOpenAIError,
   type ResponsesClient,
 } from '../src/index.js';
+import { OpenAIImageGenerator, type ImagesClient } from '../src/image.js';
 
 const scores = {
   fidelity: 90,
@@ -55,7 +57,195 @@ const client = (result: unknown): ResponsesClient => ({
   responses: { parse: async () => result as never },
 });
 
+const pngFor = (width: number, height: number): string => {
+  const chunk = (type: string, data = Buffer.alloc(0)): Buffer => {
+    const payload = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const bytes = Buffer.alloc(payload.length + 8);
+    bytes.writeUInt32BE(data.length, 0);
+    payload.copy(bytes, 4);
+    bytes.writeUInt32BE(crc32(payload), payload.length + 4);
+    return bytes;
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header[8] = 8;
+  const pixels = Buffer.alloc((width + 1) * height);
+  return Buffer.concat([
+    Buffer.from('89504e470d0a1a0a', 'hex'),
+    chunk('IHDR', header),
+    chunk('IDAT', deflateSync(pixels)),
+    chunk('IEND'),
+  ]).toString('base64');
+};
+
+const pngWithoutImageData = (width: number, height: number): string => {
+  const bytes = Buffer.from(pngFor(width, height), 'base64');
+  return Buffer.concat([
+    bytes.subarray(0, 33),
+    bytes.subarray(bytes.length - 12),
+  ]).toString('base64');
+};
+
 describe('OpenAI adapter', () => {
+  it('generates exactly one low-quality PNG without automatic retry', async () => {
+    let now = 1_000;
+    const base64 = pngFor(1536, 1024);
+    const generate = vi.fn(async () => {
+      now += 12;
+      return {
+        created: 1,
+        data: [{ b64_json: base64 }],
+        usage: { input_tokens: 10, output_tokens: 20, total_tokens: 30 },
+      };
+    });
+    const generator = new OpenAIImageGenerator(
+      { images: { generate } } satisfies ImagesClient,
+      'gpt-image-2',
+      { timeoutMs: 500, now: () => now },
+    );
+
+    await expect(
+      generator.generate({
+        imageContractVersion: 'image-1',
+        source: { kind: 'text', prompt: '蓝白企业展厅' },
+        n: 1,
+        size: '1536x1024',
+        quality: 'low',
+        outputFormat: 'png',
+      }),
+    ).resolves.toEqual({
+      base64,
+      mimeType: 'image/png',
+      size: '1536x1024',
+      usage: {
+        model: 'gpt-image-2',
+        latencyMs: 12,
+        inputTokens: 10,
+        outputTokens: 20,
+        totalTokens: 30,
+      },
+    });
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(generate).toHaveBeenCalledWith(
+      {
+        model: 'gpt-image-2',
+        prompt: '蓝白企业展厅',
+        n: 1,
+        size: '1536x1024',
+        quality: 'low',
+        output_format: 'png',
+      },
+      { timeout: 500 },
+    );
+  });
+
+  it.each([
+    '',
+    'not valid base64!',
+    'iVBORw0KGgo=',
+    pngFor(1536, 1024),
+    pngWithoutImageData(1024, 1024),
+  ])('rejects empty or invalid image base64', async (b64_json) => {
+    const generator = new OpenAIImageGenerator(
+      {
+        images: {
+          generate: async () => ({
+            created: 1,
+            data: [{ b64_json }],
+          }),
+        },
+      },
+      'gpt-image-2',
+    );
+    await expect(
+      generator.generate({
+        imageContractVersion: 'image-1',
+        source: { kind: 'text', prompt: 'test' },
+        n: 1,
+        size: '1024x1024',
+        quality: 'low',
+        outputFormat: 'png',
+      }),
+    ).rejects.toMatchObject({ code: 'MODEL_OUTPUT_INVALID' });
+  });
+
+  it('rejects oversized image output before decoding', async () => {
+    const generator = new OpenAIImageGenerator(
+      {
+        images: {
+          generate: async () => ({
+            data: [{ b64_json: 'A'.repeat(22_369_628) }],
+          }),
+        },
+      },
+      'gpt-image-2',
+    );
+    await expect(
+      generator.generate({
+        imageContractVersion: 'image-1',
+        source: { kind: 'text', prompt: 'test' },
+        n: 1,
+        size: '1024x1024',
+        quality: 'low',
+        outputFormat: 'png',
+      }),
+    ).rejects.toMatchObject({
+      code: 'MODEL_OUTPUT_INVALID',
+      retryable: true,
+    });
+  });
+
+  it('normalizes image errors and never retries automatically', async () => {
+    const generate = vi.fn(async () => {
+      throw { status: 429 };
+    });
+    const generator = new OpenAIImageGenerator(
+      { images: { generate } },
+      'gpt-image-2',
+    );
+    await expect(
+      generator.generate({
+        imageContractVersion: 'image-1',
+        source: { kind: 'text', prompt: 'test' },
+        n: 1,
+        size: '1024x1024',
+        quality: 'low',
+        outputFormat: 'png',
+      }),
+    ).rejects.toMatchObject({ code: 'RATE_LIMITED', retryable: true });
+    expect(generate).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['moderation_blocked', 'content_policy_violation'])(
+    'maps image policy errors to content rejection',
+    async (code) => {
+      const generator = new OpenAIImageGenerator(
+        {
+          images: {
+            generate: async () => {
+              throw { status: 400, code };
+            },
+          },
+        },
+        'gpt-image-2',
+      );
+      await expect(
+        generator.generate({
+          imageContractVersion: 'image-1',
+          source: { kind: 'text', prompt: 'test' },
+          n: 1,
+          size: '1024x1024',
+          quality: 'low',
+          outputFormat: 'png',
+        }),
+      ).rejects.toMatchObject({
+        code: 'CONTENT_REJECTED',
+        retryable: false,
+      });
+    },
+  );
+
   it('expands the raw normalized input through the baseline path', async () => {
     let captured: unknown;
     const planner = new OpenAIPlanner(

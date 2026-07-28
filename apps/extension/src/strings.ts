@@ -2,7 +2,7 @@ import type { ClientErrorKind } from './api-client.js';
 
 export const strings = {
   title: '视觉提示词编译器',
-  edition: '校样台 · M4',
+  edition: '校样台 · M7',
   description: '把模糊需求整理成三份可检查、可修改的视觉方向。',
   nav: {
     newDraft: '新建',
@@ -71,6 +71,19 @@ export const strings = {
     revise: '提交修改',
     revising: '正在修改…',
     score: '约束评分',
+    preview: 'GPT Image 2 预览',
+    previewCost: '每次点击会产生一次付费图片调用：仅 1 张、低质量 PNG。',
+    previewGenerate: '生成单张低质量预览',
+    previewGenerating: '正在生成预览…',
+    previewRetry: '手动重试生成',
+    previewAlt: '方向预览',
+    feedbackLegend: '图片失败反馈',
+    feedbackIssue: '主要问题',
+    feedbackOptions: ['文字不准确', '主体不清晰', '构图不理想', '风格偏离'],
+    feedbackNote: '补充说明（可选）',
+    feedbackBuild: '生成修改建议',
+    feedbackSubmitHint:
+      '修改建议只会填入下方文本框；请确认后显式点击“提交修改”。',
     modes: {
       faithful: '稳妥',
       creative: '创意',
@@ -96,6 +109,8 @@ export const strings = {
     loading: '请求已发送，请稍候。',
     compileSuccess: '编译完成，已显示三份方向。',
     reviseSuccess: '方向修改完成，结果已更新。',
+    previewSuccess: '单张预览生成完成；图片仅保留在当前页面内存中。',
+    feedbackReady: '修改建议已填入，请确认后显式提交。',
     restoreSuccess: '历史结果已恢复。',
     saved: '已保存到本地。',
     cleared: '本地记录已清空。',

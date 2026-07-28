@@ -23,6 +23,8 @@ import {
 type FixtureDirection = (typeof validCompileResponse.directions)[number];
 
 const requests: Array<{ path: string; body: Record<string, unknown> }> = [];
+const previewBase64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 
 const readBody = async (
   request: IncomingMessage,
@@ -82,6 +84,39 @@ const server = createServer(async (request, response) => {
 
   const body = await readBody(request);
   requests.push({ path: request.url, body });
+  if (request.url === '/v1/generate') {
+    const source =
+      typeof body.source === 'object' && body.source !== null
+        ? (body.source as Record<string, unknown>)
+        : {};
+    const prompt = String(source.prompt ?? '');
+    const attempts = requests.filter(
+      ({ path, body: previousBody }) =>
+        path === '/v1/generate' &&
+        typeof previousBody.source === 'object' &&
+        previousBody.source !== null &&
+        String((previousBody.source as Record<string, unknown>).prompt) ===
+          prompt,
+    ).length;
+    if (prompt.includes('faithful')) {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    }
+    if (prompt.includes('experimental') && attempts === 1) {
+      sendJson(response, 502, errorBody('UPSTREAM_ERROR'));
+      return;
+    }
+    sendJson(response, 200, {
+      requestId: '123e4567-e89b-12d3-a456-426614174020',
+      imageContractVersion: 'image-1',
+      image: {
+        base64: previewBase64,
+        mimeType: 'image/png',
+        size: body.size,
+      },
+      usage: { model: 'gpt-image-2', latencyMs: 5 },
+    });
+    return;
+  }
   const brief = String(body.brief ?? '');
   if (brief.includes('错误-离线')) {
     request.socket.destroy();
@@ -323,6 +358,27 @@ test('runs compile, copy, favorite, persistent history, and targeted revise', as
     expect(serializedStorage).not.toContain('"request"');
 
     const creative = sidePanel.locator('.direction-creative');
+    await expect(
+      creative.getByText('每次点击会产生一次付费图片调用'),
+    ).toBeVisible();
+    await creative.getByRole('button', { name: '生成单张低质量预览' }).click();
+    await expect(creative.getByAltText('创意方向预览')).toBeVisible();
+    expect(requests.at(-1)).toMatchObject({
+      path: '/v1/generate',
+      body: {
+        imageContractVersion: 'image-1',
+        source: { kind: 'text', prompt: expect.stringContaining('creative') },
+        n: 1,
+        size: '1024x1536',
+        quality: 'low',
+        outputFormat: 'png',
+      },
+    });
+    const previewStorage = JSON.stringify(
+      await extensionStorage.get(sidePanel),
+    );
+    expect(previewStorage).not.toContain(previewBase64);
+
     await creative.getByRole('button', { name: '复制完整提示词' }).click();
     await expect(
       creative.getByRole('button', { name: '已复制' }),
@@ -339,7 +395,14 @@ test('runs compile, copy, favorite, persistent history, and targeted revise', as
       creative.getByRole('button', { name: '取消收藏' }),
     ).toBeVisible();
 
-    await creative.getByLabel('只修改这个方向').fill('改为雨后清晨光线');
+    const beforeFeedbackRequests = requests.length;
+    await creative.getByLabel('主要问题').selectOption('构图不理想');
+    await creative.getByLabel('补充说明（可选）').fill('改为雨后清晨光线');
+    await creative.getByRole('button', { name: '生成修改建议' }).click();
+    await expect(creative.getByLabel('只修改这个方向')).toHaveValue(
+      /构图不理想.*雨后清晨光线.*保留既有用户硬约束/u,
+    );
+    expect(requests).toHaveLength(beforeFeedbackRequests);
     await creative.getByRole('button', { name: '提交修改' }).click();
     await expect(
       sidePanel.getByRole('heading', { name: 'creative-方向（已修改）' }),
@@ -349,13 +412,14 @@ test('runs compile, copy, favorite, persistent history, and targeted revise', as
       body: {
         targetMode: 'creative',
         preserveOtherDirections: true,
-        instruction: '改为雨后清晨光线',
+        instruction: expect.stringContaining('构图不理想'),
       },
     });
     expect(requests.at(-1)?.body.previousSpec).toBeTruthy();
     expect(requests.at(-1)?.body.previousDirections).toHaveLength(3);
 
     await sidePanel.reload();
+    await expect(sidePanel.getByAltText('创意方向预览')).toHaveCount(0);
     await sidePanel.getByRole('button', { name: /历史 2/ }).click();
     await expect(
       sidePanel.getByText(validCompileResponse.normalizedBrief.goal).first(),
@@ -434,6 +498,50 @@ test('shows controlled timeout, offline, rate-limit, and invalid-output states',
         sidePanel.getByRole('alert').getByText(message),
       ).toBeVisible();
     }
+
+    await sidePanel.getByLabel('描述你想要的画面').fill('普通预览');
+    await sidePanel.getByRole('button', { name: '编译三份方向' }).click();
+    const faithful = sidePanel.locator('.direction-faithful');
+    await faithful.getByRole('button', { name: '生成单张低质量预览' }).click();
+    await expect(
+      sidePanel
+        .locator('.direction-creative')
+        .getByRole('button', { name: '生成单张低质量预览' }),
+    ).toBeDisabled();
+    await sidePanel.getByRole('button', { name: '新建' }).click();
+    await sidePanel.getByLabel('描述你想要的画面').fill('普通预览');
+    await sidePanel.getByRole('button', { name: '编译三份方向' }).click();
+    const experimental = sidePanel.locator('.direction-experimental');
+    await expect(
+      experimental.getByRole('button', { name: '生成单张低质量预览' }),
+    ).toBeDisabled();
+    await sidePanel.waitForTimeout(650);
+    await expect(sidePanel.locator('.preview-image')).toHaveCount(0);
+    await expect(
+      experimental.getByRole('button', { name: '生成单张低质量预览' }),
+    ).toBeEnabled();
+    await experimental
+      .getByRole('button', { name: '生成单张低质量预览' })
+      .click();
+    await expect(
+      experimental.getByText('上游服务暂时不可用，可以稍后重试。'),
+    ).toBeVisible();
+    await experimental.getByRole('button', { name: '手动重试生成' }).click();
+    await expect(experimental.getByAltText('实验方向预览')).toBeVisible();
+    const experimentalPrompt =
+      validCompileResponse.directions.find(
+        ({ mode }) => mode === 'experimental',
+      )?.fullPrompt ?? '';
+    expect(
+      requests.filter(
+        ({ path, body }) =>
+          path === '/v1/generate' &&
+          typeof body.source === 'object' &&
+          body.source !== null &&
+          (body.source as Record<string, unknown>).prompt ===
+            experimentalPrompt,
+      ),
+    ).toHaveLength(2);
   } finally {
     await context.close();
     await rm(userDataDir, { recursive: true, force: true });

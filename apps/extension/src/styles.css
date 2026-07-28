@@ -590,6 +590,72 @@ dd {
   width: 100%;
 }
 
+.preview-panel {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px dashed var(--rule-dark);
+  background: var(--wash);
+}
+
+.preview-panel h4 {
+  margin: 0 0 6px;
+  font-family: var(--serif);
+  font-size: 0.86rem;
+}
+
+.cost-notice,
+.preview-meta,
+.preview-error p,
+.feedback-form small {
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+  line-height: 1.5;
+}
+
+.preview-button {
+  min-height: 38px;
+  padding: 8px 11px;
+  border: 1px solid var(--vermilion-dark);
+  background: var(--vermilion);
+  color: #fffaf2;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.preview-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 10px;
+  border: 1px solid var(--rule-dark);
+  background: var(--paper-raised);
+}
+
+.preview-meta {
+  margin: 6px 0 10px;
+}
+
+.preview-error {
+  padding: 9px;
+  border-left: 3px solid var(--vermilion);
+  background: var(--warning-wash);
+}
+
+.feedback-form {
+  padding: 10px;
+  border: 1px solid var(--rule);
+  background: var(--paper-raised);
+}
+
+.feedback-form label {
+  margin-bottom: 10px;
+}
+
+.feedback-form small {
+  display: block;
+  margin-top: 8px;
+}
+
 .support-panel h2 {
   margin-bottom: 12px;
   font-family: var(--serif);

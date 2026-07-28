@@ -3,12 +3,18 @@ import {
   type CompileRequest,
   type CompileResponse,
 } from '@vpc/contracts';
+import {
+  IMAGE_CONTRACT_VERSION,
+  buildImageFeedbackRevision,
+  type GenerateResponse,
+} from '@vpc/contracts/image';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import {
   ApiClientError,
   DEFAULT_API_BASE_URL,
   compileRequest,
+  generateRequest,
   reviseRequest,
 } from './api-client.js';
 import {
@@ -34,6 +40,8 @@ type LastAction =
       type: 'revise';
       input: Parameters<typeof reviseRequest>[0];
     };
+type PreviewState = Partial<Record<DirectionMode, GenerateResponse>>;
+type PreviewErrors = Partial<Record<DirectionMode, ApiClientError>>;
 
 const emptyRevision: Record<DirectionMode, string> = {
   faithful: '',
@@ -55,6 +63,24 @@ const errorFrom = (error: unknown): ApiClientError =>
     ? error
     : new ApiClientError('upstream', true);
 
+export const previewSizeForAspectRatio = (
+  ratio: string | null | undefined,
+): '1024x1024' | '1536x1024' | '1024x1536' => {
+  const [width, height] = ratio?.split(':').map(Number) ?? [];
+  if (
+    width !== undefined &&
+    height !== undefined &&
+    Number.isFinite(width) &&
+    Number.isFinite(height) &&
+    width > 0 &&
+    height > 0
+  ) {
+    if (width > height) return '1536x1024';
+    if (height > width) return '1024x1536';
+  }
+  return '1024x1024';
+};
+
 export function SidePanel() {
   const [taskMode, setTaskMode] = useState<'auto' | 'manual'>('auto');
   const [manualTaskType, setManualTaskType] = useState<TaskType>('poster');
@@ -74,8 +100,15 @@ export function SidePanel() {
   const [revision, setRevision] = useState(emptyRevision);
   const [copiedKey, setCopiedKey] = useState('');
   const [resultFocusToken, setResultFocusToken] = useState(0);
+  const [previews, setPreviews] = useState<PreviewState>({});
+  const [previewErrors, setPreviewErrors] = useState<PreviewErrors>({});
+  const [previewBusy, setPreviewBusy] = useState<DirectionMode | null>(null);
+  const [previewLocked, setPreviewLocked] = useState(false);
   const operationId = useRef(0);
   const historyGeneration = useRef(0);
+  const previewEpoch = useRef(0);
+  const previewOwner = useRef(0);
+  const previewLock = useRef(false);
   const resultRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -110,9 +143,17 @@ export function SidePanel() {
     }
   };
 
+  const invalidatePreviews = () => {
+    previewEpoch.current += 1;
+    setPreviewBusy(null);
+    setPreviews({});
+    setPreviewErrors({});
+  };
+
   const invalidateOperations = () => {
     operationId.current += 1;
     setBusy(null);
+    invalidatePreviews();
   };
 
   const runCompile = async (input: CompileRequest) => {
@@ -120,6 +161,7 @@ export function SidePanel() {
     const historyVersion = historyGeneration.current;
     setBusy('compile');
     setResult(null);
+    invalidatePreviews();
     setClientError(null);
     setLastAction({ type: 'compile', input });
     setLiveMessage(strings.status.loading);
@@ -176,6 +218,7 @@ export function SidePanel() {
     const id = ++operationId.current;
     const historyVersion = historyGeneration.current;
     setBusy(mode);
+    invalidatePreviews();
     setClientError(null);
     setLastAction({ type: 'revise', input });
     setLiveMessage(strings.status.loading);
@@ -211,6 +254,71 @@ export function SidePanel() {
       targetMode: mode,
       preserveOtherDirections: true,
     });
+  };
+
+  const previewSize = (): '1024x1024' | '1536x1024' | '1024x1536' => {
+    return previewSizeForAspectRatio(result?.normalizedBrief.aspectRatio.value);
+  };
+
+  const generatePreview = async (direction: Direction) => {
+    if (previewLock.current) return;
+    previewLock.current = true;
+    const epoch = ++previewEpoch.current;
+    const owner = ++previewOwner.current;
+    const operation = operationId.current;
+    setPreviewBusy(direction.mode);
+    setPreviewLocked(true);
+    setPreviewErrors((current) => {
+      const next = { ...current };
+      delete next[direction.mode];
+      return next;
+    });
+    try {
+      const response = await generateRequest({
+        imageContractVersion: IMAGE_CONTRACT_VERSION,
+        source: { kind: 'text', prompt: direction.fullPrompt },
+        n: 1,
+        size: previewSize(),
+        quality: 'low',
+        outputFormat: 'png',
+      });
+      if (previewEpoch.current !== epoch || operationId.current !== operation) {
+        return;
+      }
+      setPreviews((current) => ({ ...current, [direction.mode]: response }));
+      setLiveMessage(strings.status.previewSuccess);
+    } catch (error) {
+      if (previewEpoch.current !== epoch || operationId.current !== operation) {
+        return;
+      }
+      setPreviewErrors((current) => ({
+        ...current,
+        [direction.mode]: errorFrom(error),
+      }));
+    } finally {
+      if (previewOwner.current === owner) {
+        previewLock.current = false;
+        setPreviewLocked(false);
+        setPreviewBusy(null);
+      }
+    }
+  };
+
+  const applyImageFeedback = (
+    mode: DirectionMode,
+    issue: string,
+    note: string,
+  ) => {
+    const patch = buildImageFeedbackRevision({
+      targetMode: mode,
+      issues: [issue],
+      note,
+    });
+    setRevision((current) => ({
+      ...current,
+      [mode]: patch.instruction,
+    }));
+    setLiveMessage(strings.status.feedbackReady);
   };
 
   const retry = () => {
@@ -699,12 +807,16 @@ export function SidePanel() {
             <div className="direction-list">
               {result.directions.map((direction, index) => (
                 <DirectionCard
-                  key={direction.mode}
+                  key={`${result.requestId}-${direction.mode}`}
                   index={index + 1}
                   direction={direction}
                   favorite={isFavorite(direction)}
                   copiedKey={copiedKey}
                   busy={busy}
+                  preview={previews[direction.mode]}
+                  previewError={previewErrors[direction.mode]}
+                  previewBusy={previewBusy === direction.mode}
+                  previewLocked={previewLocked}
                   revision={revision[direction.mode]}
                   onRevision={(value) =>
                     setRevision((current) => ({
@@ -715,6 +827,8 @@ export function SidePanel() {
                   onCopy={copyPrompt}
                   onFavorite={onFavorite}
                   onRevise={onRevise}
+                  onGenerate={generatePreview}
+                  onFeedback={applyImageFeedback}
                 />
               ))}
             </div>
@@ -802,25 +916,41 @@ function DirectionCard({
   favorite,
   copiedKey,
   busy,
+  preview,
+  previewError,
+  previewBusy,
+  previewLocked,
   revision,
   onRevision,
   onCopy,
   onFavorite,
   onRevise,
+  onGenerate,
+  onFeedback,
 }: {
   index: number;
   direction: Direction;
   favorite: boolean;
   copiedKey: string;
   busy: 'compile' | DirectionMode | null;
+  preview: GenerateResponse | undefined;
+  previewError: ApiClientError | undefined;
+  previewBusy: boolean;
+  previewLocked: boolean;
   revision: string;
   onRevision(value: string): void;
   onCopy(key: string, prompt: string): Promise<void>;
   onFavorite(direction: Direction): void;
   onRevise(mode: DirectionMode): void;
+  onGenerate(direction: Direction): Promise<void>;
+  onFeedback(mode: DirectionMode, issue: string, note: string): void;
 }) {
   const fullKey = `${direction.mode}-full`;
   const compactKey = `${direction.mode}-compact`;
+  const [feedbackIssue, setFeedbackIssue] = useState<string>(
+    strings.result.feedbackOptions[0],
+  );
+  const [feedbackNote, setFeedbackNote] = useState('');
   return (
     <article
       className={`direction-card direction-${direction.mode}`}
@@ -882,6 +1012,87 @@ function DirectionCard({
           danger
         />
       </div>
+
+      <section className="preview-panel" aria-label={strings.result.preview}>
+        <h4>{strings.result.preview}</h4>
+        <p className="cost-notice">{strings.result.previewCost}</p>
+        {!preview && !previewError && (
+          <button
+            type="button"
+            className="preview-button"
+            disabled={busy !== null || previewLocked}
+            onClick={() => void onGenerate(direction)}
+          >
+            {previewBusy
+              ? strings.result.previewGenerating
+              : strings.result.previewGenerate}
+          </button>
+        )}
+        {previewError && (
+          <div className="preview-error" role="alert">
+            <p>{strings.errors[previewError.kind]}</p>
+            {previewError.retryable && (
+              <button
+                type="button"
+                className="preview-button"
+                disabled={busy !== null || previewLocked}
+                onClick={() => void onGenerate(direction)}
+              >
+                {previewBusy
+                  ? strings.result.previewGenerating
+                  : strings.result.previewRetry}
+              </button>
+            )}
+          </div>
+        )}
+        {preview && (
+          <>
+            <img
+              className="preview-image"
+              src={`data:${preview.image.mimeType};base64,${preview.image.base64}`}
+              alt={`${strings.result.modes[direction.mode]}${strings.result.previewAlt}`}
+            />
+            <p className="preview-meta">
+              {preview.image.size} · {preview.usage.model}
+            </p>
+            <fieldset className="feedback-form">
+              <legend>{strings.result.feedbackLegend}</legend>
+              <label>
+                {strings.result.feedbackIssue}
+                <select
+                  value={feedbackIssue}
+                  onChange={(event) => setFeedbackIssue(event.target.value)}
+                >
+                  {strings.result.feedbackOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                {strings.result.feedbackNote}
+                <textarea
+                  rows={2}
+                  maxLength={1000}
+                  value={feedbackNote}
+                  onChange={(event) => setFeedbackNote(event.target.value)}
+                />
+              </label>
+              <button
+                type="button"
+                className="preview-button"
+                onClick={() =>
+                  onFeedback(direction.mode, feedbackIssue, feedbackNote)
+                }
+              >
+                {strings.result.feedbackBuild}
+              </button>
+              <small>{strings.result.feedbackSubmitHint}</small>
+            </fieldset>
+          </>
+        )}
+      </section>
 
       <p className="score-line">
         {strings.result.score}

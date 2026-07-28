@@ -4,8 +4,12 @@
     "rootDir": "src",
     "paths": {
       "@vpc/contracts": ["../../packages/contracts/dist/index.d.ts"],
+      "@vpc/contracts/image": ["../../packages/contracts/dist/image.d.ts"],
       "@vpc/compiler-core": ["../../packages/compiler-core/dist/index.d.ts"],
-      "@vpc/openai-adapter": ["../../packages/openai-adapter/dist/index.d.ts"]
+      "@vpc/openai-adapter": ["../../packages/openai-adapter/dist/index.d.ts"],
+      "@vpc/openai-adapter/image": [
+        "../../packages/openai-adapter/dist/image.d.ts"
+      ]
     }
   },
   "include": ["src/**/*.ts"],

@@ -7,9 +7,11 @@ import {
   ErrorResponseSchema,
   ReviseResponseSchema,
 } from '@vpc/contracts';
+import { GenerateResponseSchema } from '@vpc/contracts/image';
 import { OpenAIAdapterError } from '@vpc/openai-adapter';
+import type { ImageGenerator } from '@vpc/openai-adapter/image';
 import type { Writable } from 'node:stream';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { buildApp } from '../src/app.js';
 import { loadConfig } from '../src/config.js';
@@ -45,6 +47,185 @@ const createApp = (planner: Planner, config = {}, logStream?: Writable) => {
 };
 
 describe('API integration', () => {
+  const generatePayload = {
+    imageContractVersion: 'image-1',
+    source: { kind: 'text', prompt: '蓝白企业展厅' },
+    n: 1,
+    size: '1536x1024',
+    quality: 'low',
+    outputFormat: 'png',
+  } as const;
+
+  const imageGenerator = (generate: ImageGenerator['generate']) =>
+    ({
+      model: 'gpt-image-2',
+      generate,
+    }) satisfies ImageGenerator;
+
+  it('keeps image generation disabled by default', async () => {
+    const generate = vi.fn(async () => {
+      throw new Error('must not run');
+    });
+    const app = buildApp({
+      imageGenerator: imageGenerator(generate),
+      config: { logLevel: 'silent' },
+      requestId: () => '123e4567-e89b-12d3-a456-426614174000',
+    });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/generate',
+      payload: generatePayload,
+    });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json().error.code).toBe('SERVICE_UNAVAILABLE');
+    expect(generate).not.toHaveBeenCalled();
+  });
+
+  it('validates and forces the single low-quality PNG generation contract', async () => {
+    const generate = vi.fn(async () => ({
+      base64: 'iVBORw0KGgo=',
+      mimeType: 'image/png' as const,
+      size: '1536x1024' as const,
+      usage: { model: 'gpt-image-2', latencyMs: 9 },
+    }));
+    const app = buildApp({
+      imageGenerator: imageGenerator(generate),
+      config: {
+        enableImageGeneration: true,
+        imageModel: 'gpt-image-2',
+        allowedOrigins: ['chrome-extension://test'],
+        logLevel: 'silent',
+      },
+      requestId: () => '123e4567-e89b-12d3-a456-426614174000',
+    });
+    apps.push(app);
+
+    const success = await app.inject({
+      method: 'POST',
+      url: '/v1/generate',
+      payload: generatePayload,
+    });
+    expect(success.statusCode).toBe(200);
+    expect(GenerateResponseSchema.safeParse(success.json()).success).toBe(true);
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(generate).toHaveBeenCalledWith(generatePayload);
+
+    for (const payload of [
+      { ...generatePayload, n: 2 },
+      { ...generatePayload, quality: 'high' },
+      { ...generatePayload, outputFormat: 'jpeg' },
+      { ...generatePayload, size: '2048x2048' },
+      {
+        ...generatePayload,
+        source: { kind: 'text', prompt: 'x'.repeat(10_001) },
+      },
+    ]) {
+      const invalid = await app.inject({
+        method: 'POST',
+        url: '/v1/generate',
+        payload,
+      });
+      expect(invalid.statusCode).toBe(400);
+    }
+    expect(generate).toHaveBeenCalledTimes(1);
+  });
+
+  it('normalizes image generation failures without a paid retry', async () => {
+    const generate = vi.fn(async () => {
+      throw new OpenAIAdapterError('UPSTREAM_ERROR', true);
+    });
+    const app = buildApp({
+      imageGenerator: imageGenerator(generate),
+      config: { enableImageGeneration: true, logLevel: 'silent' },
+      requestId: () => '123e4567-e89b-12d3-a456-426614174000',
+    });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/generate',
+      payload: generatePayload,
+    });
+    expect(response.statusCode).toBe(502);
+    expect(response.json().error.code).toBe('UPSTREAM_ERROR');
+    expect(generate).toHaveBeenCalledTimes(1);
+  });
+
+  it('maps invalid generated output to a retryable model error', async () => {
+    const app = buildApp({
+      imageGenerator: imageGenerator(
+        async () =>
+          ({
+            base64: '',
+            mimeType: 'image/png',
+            size: '1024x1024',
+            usage: { model: 'gpt-image-2', latencyMs: 1 },
+          }) as never,
+      ),
+      config: { enableImageGeneration: true, logLevel: 'silent' },
+      requestId: () => '123e4567-e89b-12d3-a456-426614174000',
+    });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/generate',
+      payload: generatePayload,
+    });
+    expect(response.statusCode).toBe(502);
+    expect(response.json().error).toMatchObject({
+      code: 'MODEL_OUTPUT_INVALID',
+      retryable: true,
+    });
+  });
+
+  it('logs image failures without prompt or base64 content', async () => {
+    const chunks: string[] = [];
+    const stream = new (await import('node:stream')).Writable({
+      write(chunk, _encoding, callback) {
+        chunks.push(String(chunk));
+        callback();
+      },
+    });
+    const secret = 'SENSITIVE-IMAGE-PROMPT-33f9';
+    const app = buildApp({
+      imageGenerator: imageGenerator(async () => {
+        throw new OpenAIAdapterError('CONTENT_REJECTED', false);
+      }),
+      config: { enableImageGeneration: true, logLevel: 'info' },
+      logStream: stream,
+      requestId: () => '123e4567-e89b-12d3-a456-426614174000',
+    });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/generate',
+      payload: {
+        ...generatePayload,
+        source: { kind: 'text', prompt: secret },
+      },
+    });
+    expect(response.statusCode).toBe(422);
+    const logs = chunks.join('');
+    expect(logs).not.toContain(secret);
+    expect(logs).not.toContain('base64');
+    const record = chunks
+      .map((chunk) => JSON.parse(chunk) as Record<string, unknown>)
+      .find(({ errorCode }) => errorCode === 'CONTENT_REJECTED');
+    expect(record).toMatchObject({
+      model: 'gpt-image-2',
+      imageContractVersion: 'image-1',
+      status: 'failure',
+      errorCode: 'CONTENT_REJECTED',
+    });
+    expect(record).not.toHaveProperty('promptVersion');
+    expect(record).not.toHaveProperty('schemaVersion');
+  });
+
   it('compiles with an injected planner and validates input', async () => {
     const app = createApp(createDeterministicFakePlanner());
     const success = await app.inject({
@@ -87,6 +268,8 @@ describe('API integration', () => {
         OPENAI_TEXT_MODEL: 'configured-model',
       }),
     ).toMatchObject({
+      imageModel: 'gpt-image-2',
+      enableImageGeneration: false,
       timeoutMs: 45_000,
       rateLimitMax: 20,
       bodyLimit: 32_768,

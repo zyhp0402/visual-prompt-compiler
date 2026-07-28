@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/generate-request.schema.json",
+  "title": "GenerateRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "imageContractVersion",
+    "source",
+    "n",
+    "size",
+    "quality",
+    "outputFormat"
+  ],
+  "properties": {
+    "imageContractVersion": {
+      "const": "image-1"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "prompt"],
+      "properties": {
+        "kind": {
+          "const": "text"
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10000
+        }
+      }
+    },
+    "n": {
+      "const": 1
+    },
+    "size": {
+      "enum": ["1024x1024", "1536x1024", "1024x1536"]
+    },
+    "quality": {
+      "const": "low"
+    },
+    "outputFormat": {
+      "const": "png"
+    }
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/generate-response.schema.json",
+  "title": "GenerateResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["requestId", "imageContractVersion", "image", "usage"],
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "imageContractVersion": {
+      "const": "image-1"
+    },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base64", "mimeType", "size"],
+      "properties": {
+        "base64": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mimeType": {
+          "const": "image/png"
+        },
+        "size": {
+          "enum": ["1024x1024", "1536x1024", "1024x1536"]
+        }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model", "latencyMs"],
+      "properties": {
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "latencyMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "inputTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "outputTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalTokens": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

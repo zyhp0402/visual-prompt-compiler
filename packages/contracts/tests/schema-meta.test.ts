@@ -8,6 +8,8 @@ const schemaFiles = [
   'visual-spec.schema.json',
   'compile-request.schema.json',
   'compile-response.schema.json',
+  'generate-request.schema.json',
+  'generate-response.schema.json',
   'revise-request.schema.json',
   'revise-response.schema.json',
   'error-response.schema.json',

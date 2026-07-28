@@ -4,6 +4,7 @@
     "rootDir": "src",
     "paths": {
       "@vpc/contracts": ["../contracts/dist/index.d.ts"],
+      "@vpc/contracts/image": ["../contracts/dist/image.d.ts"],
       "@vpc/compiler-core": ["../compiler-core/dist/index.d.ts"]
     }
   },

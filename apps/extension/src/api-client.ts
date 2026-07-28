@@ -8,6 +8,11 @@ import {
   type ReviseRequest,
   type ReviseResponse,
 } from '@vpc/contracts';
+import {
+  GenerateResponseSchema,
+  type GenerateRequest,
+  type GenerateResponse,
+} from '@vpc/contracts/image';
 
 export const DEFAULT_API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '') ||
@@ -142,3 +147,13 @@ export const reviseRequest = (
   },
 ): Promise<ReviseResponse> =>
   requestJson('/v1/revise', input, ReviseResponseSchema, options);
+
+export const generateRequest = (
+  input: GenerateRequest,
+  options?: {
+    baseUrl?: string;
+    timeoutMs?: number;
+    fetcher?: Fetcher;
+  },
+): Promise<GenerateResponse> =>
+  requestJson('/v1/generate', input, GenerateResponseSchema, options);

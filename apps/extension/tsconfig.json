@@ -6,7 +6,8 @@
     "noEmit": true,
     "types": ["chrome", "node", "vite/client"],
     "paths": {
-      "@vpc/contracts": ["../../packages/contracts/src/index.ts"]
+      "@vpc/contracts": ["../../packages/contracts/src/index.ts"],
+      "@vpc/contracts/image": ["../../packages/contracts/src/image.ts"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "vite.config.ts"]

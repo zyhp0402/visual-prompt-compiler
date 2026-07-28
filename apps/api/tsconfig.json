@@ -6,8 +6,12 @@
     "types": ["node"],
     "paths": {
       "@vpc/contracts": ["../../packages/contracts/src/index.ts"],
+      "@vpc/contracts/image": ["../../packages/contracts/src/image.ts"],
       "@vpc/compiler-core": ["../../packages/compiler-core/src/index.ts"],
-      "@vpc/openai-adapter": ["../../packages/openai-adapter/src/index.ts"]
+      "@vpc/openai-adapter": ["../../packages/openai-adapter/src/index.ts"],
+      "@vpc/openai-adapter/image": [
+        "../../packages/openai-adapter/src/image.ts"
+      ]
     }
   },
   "include": ["src/**/*.ts", "tests/**/*.ts"]

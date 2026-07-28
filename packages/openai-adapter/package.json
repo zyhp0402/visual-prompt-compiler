@@ -8,6 +8,11 @@
       "development": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./image": {
+      "development": "./src/image.ts",
+      "types": "./dist/image.d.ts",
+      "default": "./dist/image.js"
     }
   },
   "scripts": {

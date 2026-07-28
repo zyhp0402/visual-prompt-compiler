@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   ApiClientError,
   compileRequest,
+  generateRequest,
   type ClientErrorKind,
 } from '../src/api-client.js';
 import { validCompileRequest, validCompileResponse } from './fixtures.js';
@@ -14,6 +15,40 @@ const response = (body: unknown, status = 200): Response =>
   });
 
 describe('extension API client', () => {
+  it('requests and validates one generated preview', async () => {
+    const generated = {
+      requestId: '123e4567-e89b-12d3-a456-426614174000',
+      imageContractVersion: 'image-1',
+      image: {
+        base64: 'iVBORw0KGgo=',
+        mimeType: 'image/png',
+        size: '1024x1024',
+      },
+      usage: { model: 'gpt-image-2', latencyMs: 8 },
+    };
+    const fetcher = vi.fn(() =>
+      Promise.resolve(response(generated)),
+    ) as typeof fetch;
+
+    await expect(
+      generateRequest(
+        {
+          imageContractVersion: 'image-1',
+          source: { kind: 'text', prompt: 'preview prompt' },
+          n: 1,
+          size: '1024x1024',
+          quality: 'low',
+          outputFormat: 'png',
+        },
+        { fetcher },
+      ),
+    ).resolves.toEqual(generated);
+    expect(fetcher).toHaveBeenCalledWith(
+      'http://127.0.0.1:8787/v1/generate',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
   it('accepts a response only after contracts validation', async () => {
     const fetcher = vi.fn(() =>
       Promise.resolve(response(validCompileResponse)),

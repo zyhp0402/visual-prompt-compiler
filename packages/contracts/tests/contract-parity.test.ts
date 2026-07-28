@@ -12,12 +12,19 @@ import {
   ReviseResponseSchema,
   VisualSpecSchema,
 } from '../src/index.js';
+import {
+  GenerateRequestSchema,
+  GenerateResponseSchema,
+  buildImageFeedbackRevision,
+} from '../src/image.js';
 
 const schemas = [
   ['case-pattern.schema.json', CasePatternSchema],
   ['visual-spec.schema.json', VisualSpecSchema],
   ['compile-request.schema.json', CompileRequestSchema],
   ['compile-response.schema.json', CompileResponseSchema],
+  ['generate-request.schema.json', GenerateRequestSchema],
+  ['generate-response.schema.json', GenerateResponseSchema],
   ['revise-request.schema.json', ReviseRequestSchema],
   ['revise-response.schema.json', ReviseResponseSchema],
   ['error-response.schema.json', ErrorResponseSchema],
@@ -131,6 +138,30 @@ const validSamples: Record<string, unknown> = {
     outputLanguage: 'zh-CN',
   },
   'compile-response.schema.json': compileResponse,
+  'generate-request.schema.json': {
+    imageContractVersion: 'image-1',
+    source: { kind: 'text', prompt: '一张克制的蓝白企业展厅预览图' },
+    n: 1,
+    size: '1536x1024',
+    quality: 'low',
+    outputFormat: 'png',
+  },
+  'generate-response.schema.json': {
+    requestId: '123e4567-e89b-12d3-a456-426614174000',
+    imageContractVersion: 'image-1',
+    image: {
+      base64: 'iVBORw0KGgo=',
+      mimeType: 'image/png',
+      size: '1536x1024',
+    },
+    usage: {
+      model: 'gpt-image-2',
+      latencyMs: 12,
+      inputTokens: 10,
+      outputTokens: 20,
+      totalTokens: 30,
+    },
+  },
   'revise-request.schema.json': {
     previousSpec: visualSpec,
     previousDirections: compileResponse.directions,
@@ -173,6 +204,24 @@ const invalidSamples: Record<string, unknown> = {
       direction('creative'),
       direction('creative'),
     ],
+  },
+  'generate-request.schema.json': {
+    ...(validSamples['generate-request.schema.json'] as Record<
+      string,
+      unknown
+    >),
+    n: 2,
+  },
+  'generate-response.schema.json': {
+    ...(validSamples['generate-response.schema.json'] as Record<
+      string,
+      unknown
+    >),
+    image: {
+      base64: '',
+      mimeType: 'image/png',
+      size: '1536x1024',
+    },
   },
   'revise-request.schema.json': {
     ...(validSamples['revise-request.schema.json'] as Record<string, unknown>),
@@ -226,4 +275,21 @@ describe('JSON Schema and Zod parity', () => {
       expect(zodSchema.safeParse(invalidSamples[file]).success).toBe(false);
     });
   }
+});
+
+describe('image feedback revision contract', () => {
+  it('builds a targeted explicit revise instruction without changing hard constraints', () => {
+    expect(
+      buildImageFeedbackRevision({
+        targetMode: 'creative',
+        issues: ['文字不准确', '主体不清晰'],
+        note: '提高标题对比度',
+      }),
+    ).toEqual({
+      instruction:
+        '根据图片预览反馈修正这个方向：文字不准确；主体不清晰。补充说明：提高标题对比度。保留既有用户硬约束，不得改写固定文字或引入禁止元素。',
+      targetMode: 'creative',
+      preserveOtherDirections: true,
+    });
+  });
 });

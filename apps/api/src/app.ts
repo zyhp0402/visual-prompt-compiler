@@ -20,7 +20,14 @@ import {
   type ErrorResponse,
   type ReviseResponse,
 } from '@vpc/contracts';
+import {
+  GenerateRequestSchema,
+  GenerateResponseSchema,
+  IMAGE_CONTRACT_VERSION,
+  type GenerateResponse,
+} from '@vpc/contracts/image';
 import { OpenAIAdapterError } from '@vpc/openai-adapter';
+import type { ImageGenerator } from '@vpc/openai-adapter/image';
 import Fastify, {
   LogController,
   type FastifyInstance,
@@ -31,6 +38,8 @@ import { ZodError } from 'zod';
 import type { ApiConfig } from './config.js';
 
 const defaultConfig: Omit<ApiConfig, 'apiKey' | 'textModel'> = {
+  imageModel: 'gpt-image-2',
+  enableImageGeneration: false,
   host: '127.0.0.1',
   port: 8787,
   allowedOrigins: [],
@@ -43,6 +52,7 @@ const defaultConfig: Omit<ApiConfig, 'apiKey' | 'textModel'> = {
 
 type BuildOptions = {
   plannerFactory?: () => Planner;
+  imageGenerator?: ImageGenerator;
   config?: Partial<ApiConfig>;
   requestId?: () => string;
   logStream?: Writable;
@@ -71,6 +81,14 @@ const parseReviseResponse = (value: unknown): ReviseResponse => {
   return parsed.data;
 };
 
+const parseGenerateResponse = (value: unknown): GenerateResponse => {
+  const parsed = GenerateResponseSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new OpenAIAdapterError('MODEL_OUTPUT_INVALID', true);
+  }
+  return parsed.data;
+};
+
 export function buildApp(options: BuildOptions = {}): FastifyInstance {
   const config = { ...defaultConfig, ...options.config };
   const logger = {
@@ -85,11 +103,15 @@ export function buildApp(options: BuildOptions = {}): FastifyInstance {
   const nextRequestId = options.requestId ?? randomUUID;
   const requestIds = new WeakMap<object, string>();
   const requestPlanners = new WeakMap<object, Planner>();
+  const requestModels = new WeakMap<object, string>();
+  const requestKinds = new WeakMap<object, 'text' | 'image'>();
+  const requestStartedAt = new WeakMap<object, number>();
   const idFor = (request: FastifyRequest): string =>
     requestIds.get(request.raw) ?? nextRequestId();
 
   app.addHook('onRequest', async (request) => {
     requestIds.set(request.raw, nextRequestId());
+    requestStartedAt.set(request.raw, Date.now());
   });
 
   void app.register(cors, {
@@ -99,56 +121,61 @@ export function buildApp(options: BuildOptions = {}): FastifyInstance {
 
   app.after(() => {
     app.get('/health', async () => ({ status: 'ok' as const }));
-
-    if (!options.plannerFactory) return;
     const paidRouteConfig = {
       rateLimit: { max: config.rateLimitMax, timeWindow: '1 minute' },
     };
 
-    app.post('/v1/compile', { config: paidRouteConfig }, async (request) => {
-      const input = CompileRequestSchema.parse(request.body);
-      const planner = options.plannerFactory!();
-      const requestId = idFor(request);
-      requestPlanners.set(request.raw, planner);
-      const result = parseCompileResponse(
-        await compileBrief(input, {
-          planner,
-          requestId: () => requestId,
-        }),
-      );
-      request.log.info(
-        {
-          requestId,
-          model: result.usage.model,
-          promptVersion: result.promptVersion,
-          schemaVersion: result.schemaVersion,
-          status: 'success',
-          latencyMs: result.usage.latencyMs,
-          inputTokens: result.usage.inputTokens,
-          outputTokens: result.usage.outputTokens,
-          repairStatus:
-            (planner.usage?.().repairAttempts ?? 0) > 0
-              ? 'attempted'
-              : 'not_needed',
-        },
-        'model request completed',
-      );
-      return result;
-    });
-
     app.post(
-      '/v1/revise',
-      {
-        bodyLimit: config.reviseBodyLimit,
-        config: paidRouteConfig,
+      '/v1/generate',
+      { config: paidRouteConfig },
+      async (request, reply) => {
+        const requestId = idFor(request);
+        if (!config.enableImageGeneration || !options.imageGenerator) {
+          return reply
+            .status(503)
+            .send(errorResponse(requestId, 'SERVICE_UNAVAILABLE', false));
+        }
+        requestKinds.set(request.raw, 'image');
+        requestModels.set(request.raw, options.imageGenerator.model);
+        const input = GenerateRequestSchema.parse(request.body);
+        const generated = await options.imageGenerator.generate(input);
+        const result = parseGenerateResponse({
+          requestId,
+          imageContractVersion: IMAGE_CONTRACT_VERSION,
+          image: {
+            base64: generated.base64,
+            mimeType: 'image/png',
+            size: input.size,
+          },
+          usage: generated.usage,
+        });
+        request.log.info(
+          {
+            requestId,
+            model: result.usage.model,
+            imageContractVersion: result.imageContractVersion,
+            status: 'success',
+            latencyMs: result.usage.latencyMs,
+            inputTokens: result.usage.inputTokens,
+            outputTokens: result.usage.outputTokens,
+            totalTokens: result.usage.totalTokens,
+          },
+          'image request completed',
+        );
+        return result;
       },
-      async (request) => {
-        const input = ReviseRequestSchema.parse(request.body);
+    );
+
+    if (options.plannerFactory) {
+      app.post('/v1/compile', { config: paidRouteConfig }, async (request) => {
+        const input = CompileRequestSchema.parse(request.body);
         const planner = options.plannerFactory!();
         const requestId = idFor(request);
         requestPlanners.set(request.raw, planner);
-        const result = parseReviseResponse(
-          await reviseCompilation(input, {
+        requestKinds.set(request.raw, 'text');
+        requestModels.set(request.raw, planner.model);
+        const result = parseCompileResponse(
+          await compileBrief(input, {
             planner,
             requestId: () => requestId,
           }),
@@ -156,13 +183,13 @@ export function buildApp(options: BuildOptions = {}): FastifyInstance {
         request.log.info(
           {
             requestId,
-            model: result.result.usage.model,
-            promptVersion: result.result.promptVersion,
-            schemaVersion: result.result.schemaVersion,
+            model: result.usage.model,
+            promptVersion: result.promptVersion,
+            schemaVersion: result.schemaVersion,
             status: 'success',
-            latencyMs: result.result.usage.latencyMs,
-            inputTokens: result.result.usage.inputTokens,
-            outputTokens: result.result.usage.outputTokens,
+            latencyMs: result.usage.latencyMs,
+            inputTokens: result.usage.inputTokens,
+            outputTokens: result.usage.outputTokens,
             repairStatus:
               (planner.usage?.().repairAttempts ?? 0) > 0
                 ? 'attempted'
@@ -171,8 +198,48 @@ export function buildApp(options: BuildOptions = {}): FastifyInstance {
           'model request completed',
         );
         return result;
-      },
-    );
+      });
+
+      app.post(
+        '/v1/revise',
+        {
+          bodyLimit: config.reviseBodyLimit,
+          config: paidRouteConfig,
+        },
+        async (request) => {
+          const input = ReviseRequestSchema.parse(request.body);
+          const planner = options.plannerFactory!();
+          const requestId = idFor(request);
+          requestPlanners.set(request.raw, planner);
+          requestKinds.set(request.raw, 'text');
+          requestModels.set(request.raw, planner.model);
+          const result = parseReviseResponse(
+            await reviseCompilation(input, {
+              planner,
+              requestId: () => requestId,
+            }),
+          );
+          request.log.info(
+            {
+              requestId,
+              model: result.result.usage.model,
+              promptVersion: result.result.promptVersion,
+              schemaVersion: result.result.schemaVersion,
+              status: 'success',
+              latencyMs: result.result.usage.latencyMs,
+              inputTokens: result.result.usage.inputTokens,
+              outputTokens: result.result.usage.outputTokens,
+              repairStatus:
+                (planner.usage?.().repairAttempts ?? 0) > 0
+                  ? 'attempted'
+                  : 'not_needed',
+            },
+            'model request completed',
+          );
+          return result;
+        },
+      );
+    }
   });
 
   app.setErrorHandler((error, request, reply) => {
@@ -221,19 +288,30 @@ export function buildApp(options: BuildOptions = {}): FastifyInstance {
 
     const planner = requestPlanners.get(request.raw);
     const usage = planner?.usage?.();
+    const imageRequest = requestKinds.get(request.raw) === 'image';
     request.log.error(
       {
         requestId,
-        model: planner?.model ?? config.textModel,
-        promptVersion: PROMPT_VERSION,
-        schemaVersion: '1.1.0',
+        model:
+          requestModels.get(request.raw) ?? planner?.model ?? config.textModel,
+        ...(imageRequest
+          ? { imageContractVersion: IMAGE_CONTRACT_VERSION }
+          : { promptVersion: PROMPT_VERSION, schemaVersion: '1.1.0' }),
         status: 'failure',
         errorCode: code,
-        latencyMs: usage?.latencyMs,
+        latencyMs:
+          usage?.latencyMs ??
+          Math.max(0, Date.now() - (requestStartedAt.get(request.raw) ?? 0)),
         inputTokens: usage?.inputTokens,
         outputTokens: usage?.outputTokens,
-        repairStatus:
-          (usage?.repairAttempts ?? 0) > 0 ? 'attempted' : 'not_completed',
+        ...(!imageRequest
+          ? {
+              repairStatus:
+                (usage?.repairAttempts ?? 0) > 0
+                  ? 'attempted'
+                  : 'not_completed',
+            }
+          : {}),
       },
       'request failed',
     );
