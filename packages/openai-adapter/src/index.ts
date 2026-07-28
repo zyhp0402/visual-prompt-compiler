@@ -307,7 +307,7 @@ export class OpenAIPlanner implements Planner {
     const taskSpecific = buildTaskSpecific(taskType, input.mandatoryElements);
 
     return parseDomain(VisualSpecSchema, {
-      schemaVersion: '1.0.0',
+      schemaVersion: '1.1.0',
       taskType,
       goal: planned.goal,
       deliverable: planned.deliverable,

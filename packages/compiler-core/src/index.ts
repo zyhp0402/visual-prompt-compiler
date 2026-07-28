@@ -7,8 +7,15 @@ import {
   type ReviseResponse,
   type VisualSpec,
 } from '@vpc/contracts';
+import {
+  retrieveCasePatterns,
+  type RetrievalConfig,
+  type RetrievedCasePattern,
+} from './case-retrieval.js';
 
-export const PROMPT_VERSION = 'prompt-1';
+export * from './case-retrieval.js';
+
+export const PROMPT_VERSION = 'prompt-2';
 
 export type NormalizedInput = Omit<
   CompileRequest,
@@ -38,6 +45,9 @@ export type RepairResult = {
 
 export type PlanningContext = {
   previousDirections: CompileResponse['directions'];
+  casePatterns?: Array<
+    Pick<RetrievedCasePattern, 'id' | 'license' | 'patternSummary'>
+  >;
   revision?: {
     instruction: string;
     targetMode: ReviseRequest['targetMode'];
@@ -72,6 +82,10 @@ export interface Planner {
 export type CompilerDependencies = {
   planner: Planner;
   requestId: () => string;
+  retrieval?: {
+    cases: import('@vpc/contracts').CasePattern[];
+    config: RetrievalConfig;
+  };
 };
 
 export class InvalidCompilationError extends Error {
@@ -397,7 +411,7 @@ export const createDeterministicFakePlanner = (): Planner => ({
     const taskType = input.taskType === 'auto' ? 'general' : input.taskType;
     const taskSpecific = buildTaskSpecific(taskType, input.mandatoryElements);
     return {
-      schemaVersion: '1.0.0',
+      schemaVersion: '1.1.0',
       taskType,
       goal: input.brief,
       deliverable: `${taskType}视觉`,
@@ -573,7 +587,7 @@ const assembleResponse = (
   try {
     return CompileResponseSchema.parse({
       requestId: dependencies.requestId(),
-      schemaVersion: '1.0.0',
+      schemaVersion: '1.1.0',
       promptVersion: PROMPT_VERSION,
       normalizedBrief: { ...spec, riskFlags: risks },
       needsInput,
@@ -705,10 +719,27 @@ export const compileBrief = async (
   input: CompileRequest,
   dependencies: CompilerDependencies,
 ): Promise<CompileResponse> => {
-  const spec = await dependencies.planner.buildVisualSpec(
-    normalizeInput(input),
-  );
-  return runPipeline(spec, dependencies);
+  const normalized = normalizeInput(input);
+  const spec = await dependencies.planner.buildVisualSpec(normalized);
+  const patterns = dependencies.retrieval
+    ? retrieveCasePatterns(
+        normalized,
+        dependencies.retrieval.cases,
+        dependencies.retrieval.config,
+      )
+    : [];
+  const context: PlanningContext | undefined =
+    patterns.length === 0
+      ? undefined
+      : {
+          previousDirections: [],
+          casePatterns: patterns.map(({ id, license, patternSummary }) => ({
+            id,
+            license,
+            patternSummary,
+          })),
+        };
+  return runPipeline(spec, dependencies, context);
 };
 
 export const reviseCompilation = async (

@@ -34,6 +34,15 @@ const favoriteEntry = (index: number): FavoriteEntry => ({
     ]!,
 });
 
+const legacyCompileResponse = () => ({
+  ...validCompileResponse,
+  schemaVersion: '1.0.0',
+  normalizedBrief: {
+    ...validCompileResponse.normalizedBrief,
+    schemaVersion: '1.0.0',
+  },
+});
+
 describe('versioned extension storage', () => {
   it('migrates empty data into v2 defaults', () => {
     expect(migrateStoredState(undefined)).toEqual(createInitialLocalState());
@@ -50,7 +59,7 @@ describe('versioned extension storage', () => {
           id: 'legacy',
           createdAt: '2026-07-27T00:00:00.000Z',
           request: { ...validCompileRequest, brief: sensitive },
-          response: validCompileResponse,
+          response: legacyCompileResponse(),
         },
       ],
       favorites: [],
@@ -65,9 +74,48 @@ describe('versioned extension storage', () => {
     expect(migrated.history[0]).toMatchObject({
       label: validCompileResponse.normalizedBrief.goal,
       taskType: validCompileResponse.normalizedBrief.taskType,
+      response: {
+        schemaVersion: '1.1.0',
+        normalizedBrief: { schemaVersion: '1.1.0' },
+      },
     });
     expect(JSON.stringify(migrated)).not.toContain(sensitive);
     expect(migrated.history[0]).not.toHaveProperty('request');
+  });
+
+  it('migrates and rewrites v2 history responses without losing other state', async () => {
+    const favorite = favoriteEntry(7);
+    let persisted: unknown = {
+      version: 2,
+      settings: { allowAssumptions: false, outputLanguage: 'ja' },
+      history: [
+        {
+          ...historyEntryFromResponse(validCompileResponse),
+          response: legacyCompileResponse(),
+        },
+      ],
+      favorites: [favorite],
+      ui: { showAdvanced: true },
+    };
+    const store = createStateStore({
+      read: async () => structuredClone(persisted),
+      write: async (next) => {
+        persisted = structuredClone(next);
+      },
+    });
+
+    const loaded = await store.load();
+
+    expect(loaded).toMatchObject({
+      settings: { allowAssumptions: false, outputLanguage: 'ja' },
+      favorites: [favorite],
+      ui: { showAdvanced: true },
+    });
+    expect(loaded.history[0]?.response).toMatchObject({
+      schemaVersion: '1.1.0',
+      normalizedBrief: { schemaVersion: '1.1.0' },
+    });
+    expect(JSON.stringify(persisted)).not.toContain('1.0.0');
   });
 
   it('falls back safely for corrupt or unknown-version data', () => {

@@ -1,6 +1,6 @@
 # Visual Prompt Compiler
 
-Chrome Manifest V3 Side Panel + Fastify 的 pnpm monorepo。当前完成 M5：除中文侧边栏和 compile/revise 主流程外，提供可复现的离线双臂评测与显式 real 评测入口。
+Chrome Manifest V3 Side Panel + Fastify 的 pnpm monorepo。当前完成 M6：案例模式检索实验保持默认关闭，只提供本地合规模式、相似度检查和离线 A/B 证据。
 
 ## 前置条件
 
@@ -106,6 +106,7 @@ Chrome/Chromium 中加载 `apps/extension/dist`，再把
 - `pnpm format:check`：检查格式；
 - `pnpm test:e2e`：真实加载构建后的 unpacked extension；
 - `pnpm eval:mock`：运行离线双臂基准并写本地产物；
+- `pnpm eval:cases:mock`：比较关闭/开启案例检索的离线 compiler A/B；
 - `pnpm eval:real`：显式运行真实双臂基准；
 - `pnpm eval:versions`：检查 prompt/schema 版本审批记录；
 - `pnpm eval:approve`：显式更新版本审批记录；
@@ -152,3 +153,21 @@ pnpm eval:approve
 普通 `pnpm check` 只检查已审批版本并运行 mock 单测，不生成评测产物，也不调用真实 OpenAI。
 
 审批文件分别记录 prompt、Schema 与 evaluation 三套版本和 SHA-256 指纹。对应行为指纹变化时必须先提升对应版本，`pnpm eval:approve` 才允许更新批准记录。
+
+## 案例模式实验
+
+`fixtures/case-patterns.jsonl` 只包含 4 条本项目自写、`CC0-1.0`、`rightsStatus: approved` 的 synthetic pattern。规范化内容哈希使用固定字段顺序和 NFKC，覆盖设计内容、来源、许可证、署名及权利状态，仅排除 ID、哈希本身和导入时间；`pending`、`rejected`、`NOASSERTION`、哈希错误和重复内容不会进入检索。
+
+检索使用本地确定性中文 3-gram 重合与任务类型优先排序，不联网、不抓取 GitHub、不依赖数据库或向量库。强度规则固定为：
+
+- `low`：最多 1 条，跨类型重合阈值 0.18；
+- `medium`：最多 2 条，跨类型重合阈值 0.10；
+- `high`：最多 3 条，跨类型重合阈值 0.05。
+
+planner 仅接收 `id`、`license` 和 `patternSummary`；案例原始结构、来源正文和用户简报不写入评测报告。输出与 `patternSummary` 的单段相似度取字符 3-gram Jaccard 和 pattern-gram containment 的较大值，使原样嵌入长 prompt 的摘要得分为 1；再按三个方向分别聚合 full/compact 最大值。固定阈值仍为 0.72，只报告不自动重写。
+
+```powershell
+pnpm eval:cases:mock -- --run-id local-cases --now 2026-07-28T00:00:00.000Z
+```
+
+当前 10 条 benchmark 少于 Gate A 要求的 100 条，且没有人工偏好数据；mock 硬指标无提升，并有 18/30 个方向因原样注入摘要而触发相似度标记。因此实验建议为 `remove`，但这只是一项证据结论，不会自动删除实验代码、改写输出或启用产品功能；`ENABLE_CASE_RETRIEVAL=false` 不变，API 与 Side Panel 尚未接入实验检索。

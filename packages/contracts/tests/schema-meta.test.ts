@@ -4,6 +4,7 @@ import { Ajv2020, type AnySchema } from 'ajv/dist/2020.js';
 import { describe, expect, it } from 'vitest';
 
 const schemaFiles = [
+  'case-pattern.schema.json',
   'visual-spec.schema.json',
   'compile-request.schema.json',
   'compile-response.schema.json',
@@ -19,6 +20,8 @@ describe('JSON Schema contracts', () => {
       'uuid',
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
     );
+    ajv.addFormat('uri', (value) => URL.canParse(value));
+    ajv.addFormat('date-time', (value) => !Number.isNaN(Date.parse(value)));
 
     for (const file of schemaFiles) {
       const url = new URL(`../../../schemas/${file}`, import.meta.url);

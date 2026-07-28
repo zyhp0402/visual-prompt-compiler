@@ -13,7 +13,7 @@ export const validCompileRequest: CompileRequest = {
 };
 
 const visualSpec: CompileResponse['normalizedBrief'] = {
-  schemaVersion: '1.0.0',
+  schemaVersion: '1.1.0',
   taskType: 'poster',
   goal: '城市夜跑活动海报',
   deliverable: '竖版海报',
@@ -97,8 +97,8 @@ const direction = (
 
 export const validCompileResponse: CompileResponse = {
   requestId: '123e4567-e89b-12d3-a456-426614174000',
-  schemaVersion: '1.0.0',
-  promptVersion: 'prompt-1',
+  schemaVersion: '1.1.0',
+  promptVersion: 'prompt-2',
   normalizedBrief: visualSpec,
   needsInput: false,
   riskFlags: [],

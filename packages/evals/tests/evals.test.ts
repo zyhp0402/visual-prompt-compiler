@@ -350,9 +350,9 @@ describe('reports and execution boundary', () => {
 
 describe('version approval', () => {
   const approved = {
-    promptVersion: 'prompt-1',
+    promptVersion: 'prompt-2',
     promptFingerprint: 'sha256:prompt-old',
-    schemaVersion: '1.0.0',
+    schemaVersion: '1.1.0',
     schemaFingerprint: 'sha256:schema-old',
     evaluationVersion: EVALUATION_VERSION,
     evaluationFingerprint: 'sha256:evaluation-old',
@@ -414,13 +414,13 @@ describe('version approval', () => {
         evaluationFingerprint: 'sha256:evaluation-old',
       }),
       versions: {
-        promptVersion: 'prompt-2',
+        promptVersion: 'prompt-3',
         schemaVersion: approved.schemaVersion,
         evaluationVersion: approved.evaluationVersion,
       },
     });
     expect(write).toHaveBeenCalledOnce();
-    expect(approvedContent).toContain('"promptVersion": "prompt-2"');
+    expect(approvedContent).toContain('"promptVersion": "prompt-3"');
     expect(approvedContent).toContain(
       '"promptFingerprint": "sha256:prompt-new"',
     );

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = '1.0.0';
+export const SCHEMA_VERSION = '1.1.0';
 
 export const TaskTypeSchema = z.enum([
   'poster',
@@ -13,6 +13,32 @@ export const TaskTypeSchema = z.enum([
   'storyboard',
   'general',
 ]);
+
+export const RightsStatusSchema = z.enum(['approved', 'pending', 'rejected']);
+
+const caseIdPattern = /^[a-z0-9][a-z0-9._-]{0,79}$/;
+const contentHashPattern = /^sha256:[a-f0-9]{64}$/;
+
+export const CasePatternSchema = z
+  .object({
+    id: z.string().regex(caseIdPattern),
+    taskType: TaskTypeSchema,
+    designGoal: z.string().min(1),
+    visualStructure: z.array(z.string().min(1)),
+    designPatterns: z.array(z.string().min(1)),
+    successFactors: z.array(z.string().min(1)),
+    failureRisks: z.array(z.string().min(1)),
+    applicability: z.array(z.string().min(1)),
+    patternSummary: z.string().min(1),
+    sourceName: z.string().min(1),
+    sourceUrl: z.url(),
+    license: z.string().min(1),
+    attribution: z.string().min(1),
+    rightsStatus: RightsStatusSchema,
+    contentHash: z.string().regex(contentHashPattern),
+    importedAt: z.iso.datetime(),
+  })
+  .strict();
 
 export const DirectionModeSchema = z.enum([
   'faithful',
@@ -63,7 +89,7 @@ const TypographySchema = z
 
 export const VisualSpecSchema = z
   .object({
-    schemaVersion: z.literal('1.0.0'),
+    schemaVersion: z.literal('1.1.0'),
     taskType: TaskTypeSchema,
     goal: nonEmptyString,
     audience: z.string().optional(),
@@ -218,7 +244,7 @@ export const DirectionsSchema = z
 export const CompileResponseSchema = z
   .object({
     requestId: z.string().uuid(),
-    schemaVersion: z.literal('1.0.0'),
+    schemaVersion: z.literal('1.1.0'),
     promptVersion: nonEmptyString,
     normalizedBrief: VisualSpecSchema,
     needsInput: z.boolean(),
@@ -318,3 +344,4 @@ export type CompileResponse = z.infer<typeof CompileResponseSchema>;
 export type ReviseRequest = z.infer<typeof ReviseRequestSchema>;
 export type ReviseResponse = z.infer<typeof ReviseResponseSchema>;
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
+export type CasePattern = z.infer<typeof CasePatternSchema>;

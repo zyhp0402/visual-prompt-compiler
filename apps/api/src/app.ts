@@ -226,7 +226,7 @@ export function buildApp(options: BuildOptions = {}): FastifyInstance {
         requestId,
         model: planner?.model ?? config.textModel,
         promptVersion: PROMPT_VERSION,
-        schemaVersion: '1.0.0',
+        schemaVersion: '1.1.0',
         status: 'failure',
         errorCode: code,
         latencyMs: usage?.latencyMs,

@@ -338,8 +338,8 @@ describe('API integration', () => {
     expect(record).toMatchObject({
       requestId: '123e4567-e89b-12d3-a456-426614174000',
       model: 'deterministic-fake-planner',
-      promptVersion: 'prompt-1',
-      schemaVersion: '1.0.0',
+      promptVersion: 'prompt-2',
+      schemaVersion: '1.1.0',
       status: 'success',
       latencyMs: 7,
       repairStatus: 'attempted',
@@ -389,8 +389,8 @@ describe('API integration', () => {
     expect(record).toMatchObject({
       requestId: '123e4567-e89b-12d3-a456-426614174000',
       model: 'deterministic-fake-planner',
-      promptVersion: 'prompt-1',
-      schemaVersion: '1.0.0',
+      promptVersion: 'prompt-2',
+      schemaVersion: '1.1.0',
       status: 'failure',
       errorCode: 'SERVICE_UNAVAILABLE',
       latencyMs: 12,

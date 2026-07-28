@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/case-pattern.schema.json",
+  "title": "CasePattern",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "taskType",
+    "designGoal",
+    "visualStructure",
+    "designPatterns",
+    "successFactors",
+    "failureRisks",
+    "applicability",
+    "patternSummary",
+    "sourceName",
+    "sourceUrl",
+    "license",
+    "attribution",
+    "rightsStatus",
+    "contentHash",
+    "importedAt"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$"
+    },
+    "taskType": {
+      "enum": [
+        "poster",
+        "photography",
+        "product_concept",
+        "three_d_scene",
+        "infographic",
+        "character_design",
+        "image_edit",
+        "storyboard",
+        "general"
+      ]
+    },
+    "designGoal": { "type": "string", "minLength": 1 },
+    "visualStructure": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "designPatterns": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "successFactors": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "failureRisks": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "applicability": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "patternSummary": { "type": "string", "minLength": 1 },
+    "sourceName": { "type": "string", "minLength": 1 },
+    "sourceUrl": { "type": "string", "format": "uri" },
+    "license": { "type": "string", "minLength": 1 },
+    "attribution": { "type": "string", "minLength": 1 },
+    "rightsStatus": { "enum": ["approved", "pending", "rejected"] },
+    "contentHash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "importedAt": { "type": "string", "format": "date-time" }
+  }
+}

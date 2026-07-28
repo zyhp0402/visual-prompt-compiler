@@ -1,6 +1,7 @@
 import {
   CompileResponseSchema,
   DirectionSchema,
+  SCHEMA_VERSION,
   TaskTypeSchema,
   type CompileResponse,
 } from '@vpc/contracts';
@@ -68,6 +69,28 @@ const validFavorite = (value: unknown): value is FavoriteEntry =>
   typeof value.requestId === 'string' &&
   DirectionSchema.safeParse(value.direction).success;
 
+const parseStoredCompileResponse = (value: unknown): CompileResponse | null => {
+  const current = CompileResponseSchema.safeParse(value);
+  if (current.success) return current.data;
+  if (
+    !isRecord(value) ||
+    value.schemaVersion !== '1.0.0' ||
+    !isRecord(value.normalizedBrief) ||
+    value.normalizedBrief.schemaVersion !== '1.0.0'
+  ) {
+    return null;
+  }
+  const migrated = CompileResponseSchema.safeParse({
+    ...value,
+    schemaVersion: SCHEMA_VERSION,
+    normalizedBrief: {
+      ...value.normalizedBrief,
+      schemaVersion: SCHEMA_VERSION,
+    },
+  });
+  return migrated.success ? migrated.data : null;
+};
+
 const currentHistory = (value: unknown): HistoryEntry | null => {
   if (
     !isRecord(value) ||
@@ -78,14 +101,14 @@ const currentHistory = (value: unknown): HistoryEntry | null => {
   ) {
     return null;
   }
-  const response = CompileResponseSchema.safeParse(value.response);
-  if (!response.success) return null;
+  const response = parseStoredCompileResponse(value.response);
+  if (response === null) return null;
   return {
     id: value.id,
     createdAt: value.createdAt,
     label: value.label,
-    taskType: response.data.normalizedBrief.taskType,
-    response: response.data,
+    taskType: response.normalizedBrief.taskType,
+    response,
   };
 };
 
@@ -97,9 +120,9 @@ const legacyHistory = (value: unknown): HistoryEntry | null => {
   ) {
     return null;
   }
-  const response = CompileResponseSchema.safeParse(value.response);
-  if (!response.success) return null;
-  return historyEntryFromResponse(response.data, value.createdAt);
+  const response = parseStoredCompileResponse(value.response);
+  if (response === null) return null;
+  return historyEntryFromResponse(response, value.createdAt);
 };
 
 const normalize = (

@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CompileRequestSchema,
   CompileResponseSchema,
+  CasePatternSchema,
   ErrorResponseSchema,
   ReviseRequestSchema,
   ReviseResponseSchema,
@@ -13,6 +14,7 @@ import {
 } from '../src/index.js';
 
 const schemas = [
+  ['case-pattern.schema.json', CasePatternSchema],
   ['visual-spec.schema.json', VisualSpecSchema],
   ['compile-request.schema.json', CompileRequestSchema],
   ['compile-response.schema.json', CompileResponseSchema],
@@ -22,7 +24,7 @@ const schemas = [
 ] as const;
 
 const visualSpec = {
-  schemaVersion: '1.0.0',
+  schemaVersion: '1.1.0',
   taskType: 'general',
   goal: '测试视觉',
   deliverable: '图片',
@@ -82,8 +84,8 @@ const direction = (mode: 'faithful' | 'creative' | 'experimental') => ({
 
 const compileResponse = {
   requestId: '123e4567-e89b-12d3-a456-426614174000',
-  schemaVersion: '1.0.0',
-  promptVersion: 'prompt-1',
+  schemaVersion: '1.1.0',
+  promptVersion: 'prompt-2',
   normalizedBrief: visualSpec,
   needsInput: false,
   riskFlags: [],
@@ -96,6 +98,26 @@ const compileResponse = {
 };
 
 const validSamples: Record<string, unknown> = {
+  'case-pattern.schema.json': {
+    id: 'synthetic-poster-grid',
+    taskType: 'poster',
+    designGoal: '建立清晰的海报阅读层级',
+    visualStructure: ['标题区', '主体区', '辅助信息区'],
+    designPatterns: ['单一焦点', '分层网格'],
+    successFactors: ['阅读顺序明确'],
+    failureRisks: ['模块权重接近'],
+    applicability: ['中文活动海报'],
+    patternSummary: '以单一主焦点和三级网格控制中文海报阅读顺序。',
+    sourceName: 'Visual Prompt Compiler synthetic fixture',
+    sourceUrl:
+      'https://github.com/zyhp0402/visual-prompt-compiler/tree/main/fixtures',
+    license: 'CC0-1.0',
+    attribution: 'Visual Prompt Compiler contributors',
+    rightsStatus: 'approved',
+    contentHash:
+      'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    importedAt: '2026-07-28T00:00:00.000Z',
+  },
   'visual-spec.schema.json': visualSpec,
   'compile-request.schema.json': {
     brief: '生成一张海报',
@@ -132,6 +154,10 @@ const validSamples: Record<string, unknown> = {
 };
 
 const invalidSamples: Record<string, unknown> = {
+  'case-pattern.schema.json': {
+    ...(validSamples['case-pattern.schema.json'] as Record<string, unknown>),
+    contentHash: 'sha256:not-a-hash',
+  },
   'visual-spec.schema.json': {
     ...visualSpec,
     aspectRatio: { mode: 'auto', value: 'auto' },
@@ -177,6 +203,8 @@ describe('JSON Schema and Zod parity', () => {
     'uuid',
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
   );
+  ajv.addFormat('uri', (value) => URL.canParse(value));
+  ajv.addFormat('date-time', (value) => !Number.isNaN(Date.parse(value)));
 
   for (const [file] of schemas) {
     const url = new URL(`../../../schemas/${file}`, import.meta.url);

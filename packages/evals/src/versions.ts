@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { PROMPT_VERSION } from '@vpc/compiler-core';
 import { SCHEMA_VERSION } from '@vpc/contracts';
 
-export const EVALUATION_VERSION = 'eval-1';
+export const EVALUATION_VERSION = 'eval-3';
 
 type Versions = {
   promptVersion: string;
@@ -42,14 +42,19 @@ const promptSources = [
   join(repoRoot, 'packages/openai-adapter/src/index.ts'),
 ];
 const schemaSources = [
+  join(repoRoot, 'schemas/case-pattern.schema.json'),
   join(repoRoot, 'schemas/visual-spec.schema.json'),
   join(repoRoot, 'schemas/compile-response.schema.json'),
   join(repoRoot, 'packages/contracts/src/index.ts'),
 ];
 const evaluationSources = [
+  join(repoRoot, 'packages/compiler-core/src/case-retrieval.ts'),
+  join(repoRoot, 'packages/evals/src/case-eval.ts'),
+  join(repoRoot, 'packages/evals/src/case-cli.ts'),
   join(repoRoot, 'packages/evals/src/index.ts'),
   join(repoRoot, 'packages/evals/src/cli.ts'),
   join(repoRoot, 'scripts/eval-real-preflight.mjs'),
+  join(repoRoot, 'fixtures/case-patterns.jsonl'),
 ];
 
 const fingerprint = async (paths: string[]): Promise<string> => {

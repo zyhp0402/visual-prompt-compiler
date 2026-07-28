@@ -1,14 +1,38 @@
 # 项目状态
 
-更新时间：2026-07-27
+更新时间：2026-07-28
 
 ## 当前里程碑
 
-- 当前：M5 评测、回归与发布门槛
-- 状态：M5 实现、本地独立验收、远端 CI 均完成
+- 当前：M6 案例模式库实验
+- 状态：M6 实现与本地全量验收完成，等待提交与远端 CI
 - 远端：https://github.com/zyhp0402/visual-prompt-compiler
-- 边界：只实现 M5 评测，不生成图片，不执行真实 OpenAI 调用，不开始 M6
-- 下一步：等待用户验收；后续里程碑必须由用户明确要求
+- 边界：只实现默认关闭的 M6 本地案例实验，不生成图片，不调用真实 OpenAI，不开始 M7
+- 下一步：审查并提交 M6，随后验证远端 CI；后续里程碑必须由用户明确要求
+
+## M6 已完成
+
+- 新增 CasePattern Zod/JSON Schema、严格 SHA-256 内容哈希、权利/许可证 gate 和确定性去重报告
+- 4 条本项目自写 synthetic pattern，均为 CC0-1.0、approved，来源指向本仓库
+- compiler-core 本地任务类型优先 + 中文 3-gram 检索；low/medium/high 只控制 topK 与阈值
+- planner 可选上下文只包含 id、license、patternSummary；关闭时结果 byte-for-byte 不变
+- 输出与 patternSummary 的相似度取 3-gram Jaccard 和 pattern-gram containment 较大值，只检测不重写
+- `eval:cases:mock` 比较 compiler-no-retrieval 与 compiler-retrieval，报告保持脱敏
+- evaluationVersion 为 eval-3；Case Schema、检索、A/B 与 fixtures 进入版本指纹
+- API、Side Panel、扩展权限和默认 `ENABLE_CASE_RETRIEVAL=false` 均未改变
+- 当前实验建议：`remove`。18/30 个方向因原样注入 patternSummary 被标记；该建议不自动删除代码、改写输出或启用产品功能
+
+## M6 验收结果
+
+- Node 24.14.0 / pnpm 11.9.0
+- contracts 15、compiler-core 27、openai-adapter 17、evals 27、API 15、扩展 20 个测试通过
+- A/B：10 benchmark × 2 arms；两臂 Schema 10/10、固定文字 42/42、禁止项 0/84、冲突 1、方向差异 10/10
+- retrieval coverage 6/10；方向级相似度告警 18/30；建议由实际 case 数、硬指标、覆盖率和 flagged directions 动态计算
+- M6 使用固定 `run-id=fixed-m6`、`now=2026-07-28T00:00:00.000Z` 双跑，JSON/Markdown 分别一致；报告不含 brief、硬约束正文、patternSummary 或 prompt
+- M5 使用固定 `run-id=fixed-m5`、`now=2026-07-28T00:00:00.000Z` 双跑，JSON/Markdown 分别一致；业务指标与升级前基线一致
+- `pnpm eval:versions`：prompt-2 / schema 1.1.0 / eval-3
+- `pnpm check`：格式、lint、strict typecheck、121 个 Vitest、全部 build 和 2 个 Playwright E2E 通过
+- 未调用真实 OpenAI，未联网采集，未接入 API/UI，未修改扩展权限
 
 ## M5 已完成
 
@@ -176,7 +200,7 @@
 - 已创建纯 `compiler-core`，包含 deterministic fake planner、renderer、lint 与最多一次 repair
 - 已实现 `openai-adapter` 和 compile/revise 服务端路由
 - 已实现 M4 Side Panel 主流程、版本化本地历史与收藏
-- 已创建 `evals` 并完成 M5 离线评测；未实现图片生成或 M6
+- 已创建 `evals` 并完成 M5 离线评测与默认关闭的 M6 本地案例模式实验；未实现图片生成或 M7
 - 未增加登录、支付、数据库、社区、模型训练或 GitHub 自动抓取
 - 未把 API Key 放入扩展
 

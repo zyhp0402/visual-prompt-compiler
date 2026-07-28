@@ -112,6 +112,38 @@ describe('OpenAI adapter', () => {
     });
   });
 
+  it('sends only approved pattern summaries from optional retrieval context', async () => {
+    let captured: unknown;
+    const planner = new OpenAIPlanner(
+      {
+        responses: {
+          parse: async (input) => {
+            captured = input;
+            return { output_parsed: directions };
+          },
+        },
+      },
+      'configured-model',
+    );
+    await planner.planDirections({} as never, {
+      previousDirections: [],
+      casePatterns: [
+        {
+          id: 'synthetic-one',
+          license: 'CC0-1.0',
+          patternSummary: 'summary only',
+        },
+      ],
+    });
+
+    const serialized = JSON.stringify(captured);
+    expect(serialized).toContain('summary only');
+    expect(serialized).toContain('CC0-1.0');
+    expect(serialized).not.toContain('designGoal');
+    expect(serialized).not.toContain('visualStructure');
+    expect(serialized).not.toContain('sourceUrl');
+  });
+
   it('rejects invalid and empty structured output', async () => {
     for (const output_parsed of [{ directions: [] }, null]) {
       const planner = new OpenAIPlanner(client({ output_parsed }), 'model');
