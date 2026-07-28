@@ -21,6 +21,7 @@
 ## 本轮证据
 
 - `pnpm check` 通过：146 个 Vitest、3 个 release-check 测试、全部 strict typecheck/build、版本门禁和 2 个 unpacked-extension Playwright E2E 均通过。
+- GitHub Actions [`30337769837`](https://github.com/zyhp0402/visual-prompt-compiler/actions/runs/30337769837) 在 Node 24 / pnpm 11 的 Ubuntu runner 完整通过。
 - `pnpm audit --prod --json`：58 个生产依赖，五个严重级别均为 0。
 - `pnpm licenses list --prod --json`：仅 MIT、BSD-3-Clause、ISC、Apache-2.0。
 - Side Panel：JavaScript 293.92 kB（gzip 89.31 kB），CSS 10.14 kB（gzip 2.92 kB），HTML 0.42 kB（gzip 0.31 kB）；M8 未增加运行时代码。

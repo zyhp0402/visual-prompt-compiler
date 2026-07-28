@@ -21,6 +21,7 @@
 - 已生成 0.1.0 候选 ZIP、逐文件清单和 SHA-256；产物不提交 Git
 - 同一 Windows 宿主的 clean clone `ea030cd` 完成 frozen install、完整检查、unpacked-extension E2E 与候选包生成；逐文件清单一致；未声称全新 OS/空全局 store
 - 三路独立审查发现的发布 gate、性能边界、隐私措辞和回滚验证问题已修正；无剩余 P0/P1
+- GitHub Actions [`30337769837`](https://github.com/zyhp0402/visual-prompt-compiler/actions/runs/30337769837) 全绿
 - 公开/商店发布仍被真实 OpenAI、视觉质量、人工偏好门和商店政策验证阻塞；无静默豁免
 
 ## M7 已完成
